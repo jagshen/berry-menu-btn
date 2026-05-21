@@ -337,8 +337,10 @@
       setTimeout(function() { loadInIframe('https://inftab.com/'); }, 300);
     }
 
-    // 11. 隐藏原生按钮（使用我们自己的样式按钮代替），连接原生面板
-    replaceNativeButton(api);
+    // 11. 仅在油猴注入时替换原生按钮；<script src> 远程加载时原生按钮已存在，无需替换
+    if (typeof GM_getValue === 'function') {
+      replaceNativeButton(api);
+    }
 
     console.log('[berry-menu-btn] 原生菜单增强完成');
   }
