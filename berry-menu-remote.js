@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.5
+ * @version 2.0.6
  */
 (function () {
   'use strict';
