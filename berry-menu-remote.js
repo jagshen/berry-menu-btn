@@ -112,14 +112,15 @@
   function _handleCustomUrlApply(menuApi, inputEl) {
     if (!inputEl) return;
     var url = inputEl.value.trim();
-    if (!url) { menuApi.showToast('请输入网址'); return; }
+    if (!url) { menuApi.showTip('请输入网址'); return; }
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     storageSet('berry_home_custom_url', url);
     storageSet('berry_home_style', 'custom');
     menuApi.hsSet('berry_home_custom_url', url);
     menuApi.hsSet('berry_home_style', 'custom');
     menuApi.selectStyle('custom');
-    menuApi.showToast('设置生效，下次启动[自定义]');
+    menuApi.showTip('设置生效，下次启动[自定义]');
+    navigateTo(url);
     _hideCustomUrl();
   }
 
@@ -137,7 +138,7 @@
       sectionEl.id = 'scriptCustomUrlSection';
       sectionEl.innerHTML =
         '<input type="url" id="scriptCustomUrlInput" placeholder="https://example.com">' +
-        '<button id="scriptCustomUrlApplyBtn">\u4FDD\u5B58</button>';
+        '<button id="scriptCustomUrlApplyBtn">\u524D\u5F80</button>';
       switchSection.parentNode.insertBefore(sectionEl, switchSection);
     } else {
       var html =
@@ -227,6 +228,15 @@
     menuApi.removePlaceholder();
 
     var savedStyle = storageGet('berry_home_style', menuApi.hsGet('berry_home_style')) || 'default';
+
+    // 为默认样式添加点击提示
+    var defaultItem = _doc.getElementById('styleDefault');
+    if (defaultItem) {
+      defaultItem.addEventListener('click', function() {
+        menuApi.selectStyle('default');
+        menuApi.showTip('设置生效，下次启动[官方默认]');
+      });
+    }
     var savedCustomUrl = storageGet('berry_home_custom_url', menuApi.hsGet('berry_home_custom_url')) || '';
 
     menuApi.addItem({
@@ -236,6 +246,7 @@
         _hideCustomUrl();
         storageSet('berry_home_style', 'itab'); menuApi.hsSet('berry_home_style', 'itab');
         menuApi.selectStyle('itab');
+        menuApi.showTip('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[iTab]');
       }
     });
 
@@ -246,12 +257,13 @@
         _hideCustomUrl();
         storageSet('berry_home_style', 'inftab'); menuApi.hsSet('berry_home_style', 'inftab');
         menuApi.selectStyle('inftab');
+        menuApi.showTip('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[infTab]');
       }
     });
 
     menuApi.addItem({
       key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u8BBF\u95EE\u94FE\u63A5',
-      desc: '\u8F93\u5165\u4EFB\u610F\u7F51\u5740', active: savedStyle === 'custom',
+      desc: savedCustomUrl || '\u8F93\u5165\u4EFB\u610F\u7F51\u5740', active: savedStyle === 'custom',
       onClick: function () { _showCustomUrl(menuApi, savedCustomUrl); }
     });
 
@@ -416,9 +428,18 @@
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
 
       var nameMap = { default: '官方默认', itab: 'iTab', inftab: 'infTab', custom: '自定义' };
-      showToast('设置生效，下次启动[' + nameMap[styleKey] + ']');
-      closeMenu();
+      showFloatTip('设置生效，下次启动[' + nameMap[styleKey] + ']');
     };
+
+    function showFloatTip(msg) {
+      var tipEl = shadow.getElementById('floatMenuTip');
+      if (!tipEl) return;
+      var textEl = tipEl.querySelector('.f-tip-text');
+      if (!textEl) return;
+      textEl.textContent = msg;
+      tipEl.classList.add('show');
+      setTimeout(function() { tipEl.classList.remove('show'); }, 2500);
+    }
 
     _page.__berryHandleSwitchMethod = function (method) {
       storageSet('berry_home_switch_method', method);
@@ -426,18 +447,19 @@
       for (var k = 0; k < fmItems.length; k++) fmItems[k].classList.remove('active');
       var t = shadow.querySelector('[data-fm="' + method + '"]');
       if (t) t.classList.add('active');
-      showToast('\u5207\u6362\u65B9\u5F0F: ' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
+      showFloatTip('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
     };
 
     _page.__berryHandleApply = function () {
       var fui = shadow.getElementById('floatCustomUrlInput');
       if (!fui) return;
       var url = fui.value.trim();
-      if (!url) { showToast('\u8BF7\u8F93\u5165\u7F51\u5740'); return; }
+      if (!url) { showFloatTip('\u8BF7\u8F93\u5165\u7F51\u5740'); return; }
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       storageSet('berry_home_custom_url', url);
       storageSet('berry_home_style', 'custom');
-      showToast('设置生效，下次启动[自定义]');
+      showFloatTip('设置生效，下次启动[自定义]');
+      navigateTo(url);
       closeMenu();
       var isec = shadow.getElementById('floatCustomUrlSection');
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
@@ -493,6 +515,10 @@
       '.f-custom-url-section input[type="url"]:focus{border-color:#0a58f6}',
       '.f-custom-url-section button{height:34px;padding:0 12px;border-radius:10px;border:none;background:#0a58f6;color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;pointer-events:auto}',
       '.f-custom-url-section button:active{opacity:0.8}',
+      '.f-menu-tip{margin:8px 0;padding:10px 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:#0a58f6;opacity:0;transition:opacity 0.25s}',
+      '.f-menu-tip.show{opacity:1}',
+      '.f-menu-tip .f-tip-icon{font-size:16px}',
+      '.f-menu-tip .f-tip-text{flex:1}',
       '.f-switch-method-label{font-size:12px;color:#8e8e93;margin-bottom:8px}',
       '.f-switch-method-list{display:flex;gap:6px}',
       '.f-switch-method-item{flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid rgba(0,0,0,0.08);background:rgba(0,0,0,0.04);text-align:center;cursor:pointer;transition:all 0.15s;font-size:11px;color:#333;display:flex;align-items:center;justify-content:center;gap:2px;-webkit-tap-highlight-color:transparent;pointer-events:auto}',
@@ -525,7 +551,7 @@
     var customInputHtml =
       '<div class="f-custom-url-section' + (customInputVisible ? ' visible' : '') + '" id="floatCustomUrlSection">' +
       '<input type="url" id="floatCustomUrlInput" placeholder="https://example.com" value="' + (savedCustomUrl || '').replace(/"/g, '&quot;') + '">' +
-      '<button onclick="__berryHandleApply()">\u4FDD\u5B58</button></div>';
+      '<button onclick="__berryHandleApply()">\u524D\u5F80</button></div>';
 
     return (
       '<div class="f-menu-overlay" id="shadowMenuOverlay">' +
@@ -534,6 +560,7 @@
       '<div class="f-mode-label">\uD83C\uDFE0 \u4E3B\u9875\u98CE\u683C</div>' +
       '<div class="f-home-style-list">' + html + '</div>' +
       customInputHtml +
+      '<div class="f-menu-tip" id="floatMenuTip"><span class="f-tip-icon">\u26A1</span><span class="f-tip-text"></span></div>' +
       '<div class="f-switch-method-label">\uD83D\uDD04 \u5207\u6362\u65B9\u5F0F</div>' +
       '<div class="f-switch-method-list">' +
       '<div class="f-switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-fm="longpress" onclick="__berryHandleSwitchMethod(\'longpress\')"><span>\u2B05\uFE0F</span><span>\u957F\u6309</span></div>' +
