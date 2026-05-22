@@ -1,8 +1,8 @@
 /**
- * Berry Menu Remote
- * 依赖 userscript 注入的 window.__berryMenu
- * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.3
+ * Berry Menu Remote - 核心UI逻辑（远程加载版）
+ * 依赖 userscript 注入的 window.__berryMenu 全局对象
+ * 包含：主页增强 + 悬浮按钮(Shadow DOM) + 域名匹配
+ * @version 2.0.4
  */
 (function () {
   'use strict';
@@ -360,7 +360,7 @@
 
     /* ========== 按钮 + 菜单 HTML ========== */
     var savedMethod = storageGet('berry_home_switch_method') || 'menu';
-    var css = getMenuCSS();
+    var css = getMenuCSS(isHome);
     var html = getMenuHTML(savedMethod, savedStyle, customUrl);
 
     shadow.innerHTML = '<style>' + css + '</style>' + BTN_HTML + html;
@@ -485,10 +485,12 @@
     '</button></div>';
 
   /* ========== 悬浮菜单 CSS ========== */
-  function getMenuCSS() {
+  function getMenuCSS(isHome) {
+    var btnTop = isHome ? '45px' : '30px';
+    var panelTop = isHome ? '77px' : '62px';
     return [
       ':host{display:block!important;overflow:visible!important}',
-      '.btn-wrap{position:fixed;top:30px;left:16px;z-index:2147483647;pointer-events:auto}',
+      '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:16px!important;z-index:2147483647;pointer-events:auto}',
       '.btn{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,0.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2147483647;transition:all 0.2s;border:1.5px solid rgba(255,255,255,0.4);outline:0;box-shadow:0 2px 8px rgba(0,0,0,0.15)}',
       '.btn:active{transform:scale(0.92);background:rgba(255,255,255,0.4)}',
       '.btn:hover{background:rgba(255,255,255,0.40);border-color:rgba(255,255,255,0.55);box-shadow:0 2px 12px rgba(0,0,0,0.2)}',
@@ -498,7 +500,7 @@
       ':host-context(html.berry-dark) .menu-icon span,:host-context(html.dark) .menu-icon span{background-color:#aaa}',
       '.f-menu-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:200;align-items:flex-start;justify-content:flex-start;overflow-y:auto;overflow-x:hidden}',
       '.f-menu-overlay.open{display:flex!important}',
-      '.f-menu-panel{position:relative;margin:62px 16px 20px;width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92)}',
+      '.f-menu-panel{position:relative;margin:' + panelTop + ' 16px 20px;width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92)}',
       '.f-menu-title{font-size:15px;font-weight:600;color:#222;margin-top:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.06)}',
       '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px}',
       '.f-home-style-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}',
