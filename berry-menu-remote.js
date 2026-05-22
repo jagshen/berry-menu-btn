@@ -1,7 +1,7 @@
 /**
- * Berry Menu Remote - 核心UI逻辑（远程加载版）
+ * Berry Menu Remote
  * 依赖 userscript 注入的 window.__berryMenu 全局对象
- * 包含：主页增强 + 悬浮按钮(Shadow DOM) + 域名匹配
+ * 包含：主页增强 + 悬浮按钮 + 域名匹配
  * @version 2.0.4
  */
 (function () {
@@ -109,32 +109,19 @@
      主页场景：通过 BerryHomeMenu API 追加菜单项
      ════════════════════════════════════════ */
 
-  function showHomeToast(msg) {
-    var existing = _doc.getElementById('scriptHomeToast');
-    if (existing) existing.remove();
-    var toast = _doc.createElement('div');
-    toast.id = 'scriptHomeToast';
-    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;z-index:2147483647;pointer-events:none;transition:opacity 0.3s';
-    toast.textContent = msg;
-    _doc.body.appendChild(toast);
-    setTimeout(function () {
-      toast.style.opacity = '0';
-      setTimeout(function () { if (toast.parentNode) toast.remove(); }, 300);
-    }, 1500);
-  }
-
   function _handleCustomUrlApply(menuApi, inputEl) {
     if (!inputEl) return;
     var url = inputEl.value.trim();
-    if (!url) { showHomeToast('请输入网址'); return; }
+    if (!url) { menuApi.showTip('请输入网址'); return; }
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     storageSet('berry_home_custom_url', url);
     storageSet('berry_home_style', 'custom');
     menuApi.hsSet('berry_home_custom_url', url);
     menuApi.hsSet('berry_home_style', 'custom');
     menuApi.selectStyle('custom');
-    showHomeToast('设置生效，下次启动[自定义]');
+    menuApi.showTip('设置生效，下次启动[自定义]');
     navigateTo(url);
+    _hideCustomUrl();
   }
 
   function _showCustomUrl(menuApi, defaultValue) {
@@ -247,7 +234,7 @@
     if (defaultItem) {
       defaultItem.addEventListener('click', function() {
         menuApi.selectStyle('default');
-        showHomeToast('设置生效，下次启动[官方默认]');
+        menuApi.showTip('设置生效，下次启动[官方默认]');
       });
     }
     var savedCustomUrl = storageGet('berry_home_custom_url', menuApi.hsGet('berry_home_custom_url')) || '';
@@ -259,7 +246,7 @@
         _hideCustomUrl();
         storageSet('berry_home_style', 'itab'); menuApi.hsSet('berry_home_style', 'itab');
         menuApi.selectStyle('itab');
-        showHomeToast('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[iTab]');
+        menuApi.showTip('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[iTab]');
       }
     });
 
@@ -270,7 +257,7 @@
         _hideCustomUrl();
         storageSet('berry_home_style', 'inftab'); menuApi.hsSet('berry_home_style', 'inftab');
         menuApi.selectStyle('inftab');
-        showHomeToast('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[infTab]');
+        menuApi.showTip('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[infTab]');
       }
     });
 
@@ -357,17 +344,17 @@
 
     var shadow = host.attachShadow({ mode: 'open' });
 
-    function showHomeToast(msg) {
-      var existing = _doc.getElementById('scriptHomeToast');
+    function showToast(msg) {
+      var existing = shadow.getElementById('menuToast');
       if (existing) existing.remove();
       var toast = _doc.createElement('div');
-      toast.id = 'scriptHomeToast';
+      toast.id = 'menuToast';
       toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;z-index:2147483647;pointer-events:none;transition:opacity 0.3s';
       toast.textContent = msg;
-      _doc.body.appendChild(toast);
+      shadow.appendChild(toast);
       setTimeout(function () {
         toast.style.opacity = '0';
-        setTimeout(function () { if (toast.parentNode) toast.remove(); }, 300);
+        setTimeout(function () { toast.remove(); }, 300);
       }, 1500);
     }
 
@@ -443,10 +430,18 @@
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
 
       var nameMap = { default: '官方默认', itab: 'iTab', inftab: 'infTab', custom: '自定义' };
-      showHomeToast('设置生效，下次启动[' + nameMap[styleKey] + ']');
+      showFloatTip('设置生效，下次启动[' + nameMap[styleKey] + ']');
     };
 
-
+    function showFloatTip(msg) {
+      var tipEl = shadow.getElementById('floatMenuTip');
+      if (!tipEl) return;
+      var textEl = tipEl.querySelector('.f-tip-text');
+      if (!textEl) return;
+      textEl.textContent = msg;
+      tipEl.classList.add('show');
+      setTimeout(function() { tipEl.classList.remove('show'); }, 2500);
+    }
 
     _page.__berryHandleSwitchMethod = function (method) {
       storageSet('berry_home_switch_method', method);
@@ -454,7 +449,7 @@
       for (var k = 0; k < fmItems.length; k++) fmItems[k].classList.remove('active');
       var t = shadow.querySelector('[data-fm="' + method + '"]');
       if (t) t.classList.add('active');
-      showHomeToast('\u5207\u6362\u65B9\u5F0E\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
+      showFloatTip('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
     };
 
     _page.__berryHandleApply = function () {
