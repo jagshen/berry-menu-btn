@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.8
+ * @version 2.0.5
  */
 (function () {
   'use strict';
@@ -97,83 +97,6 @@
     var d2 = extractCoreDomain(url2);
     if (!d1 || !d2) return false;
     return d1 === d2;
-  }
-
-
-  /* ══════════════════════════════════════
-     显示方式逻辑（always/longpress/dblclick）
-     ══════════════════════════════════════ */
-  function setupDisplayMethodHome() {
-    var savedMethod = storageGet('berry_home_switch_method') || 'always';
-    // 校验旧值（如 "menu"）自动 fallback 到 always
-    if (!/^(always|longpress|dblclick)$/.test(savedMethod)) {
-      savedMethod = 'always';
-      storageSet('berry_home_switch_method', 'always');
-    }
-    var zone = _doc.getElementById('switchZone');
-    if (!zone) return;
-
-    // 防止闪现：先强制隐藏，再由下面逻辑决定是否显示
-    zone.style.display = 'none';
-
-    // 移除旧的热区
-    var oldHot = _doc.getElementById('__hotZone');
-    if (oldHot) oldHot.remove();
-
-    if (savedMethod === 'always') {
-      zone.style.display = '';
-    } else {
-      createHotZone(zone, savedMethod, false);
-    }
-  }
-
-  function setupDisplayMethodFloat(shadow) {
-    var savedMethod = storageGet('berry_home_switch_method') || 'always';
-    // 校验旧值自动 fallback 到 always
-    if (!/^(always|longpress|dblclick)$/.test(savedMethod)) {
-      savedMethod = 'always';
-      storageSet('berry_home_switch_method', 'always');
-    }
-    var zone = shadow.getElementById('menuBtnWrap');
-    var hotZone = shadow.getElementById('__floatHotZone');
-    // 防止闪现：先强制隐藏，再由下面逻辑决定是否显示
-    if (zone) zone.style.display = 'none';
-    // 移除旧热区
-    if (hotZone) hotZone.remove();
-    if (savedMethod === 'always') {
-      if (zone) zone.style.display = '';
-    } else {
-      if (zone) zone.style.display = 'none';
-      createHotZone(zone, savedMethod, true, shadow);
-    }
-  }
-
-  function createHotZone(targetBtn, method, isShadow, shadow) {
-    var host = isShadow ? shadow.querySelector('.btn-wrap').parentNode : _doc.body;
-    var hot = _doc.createElement('div');
-    hot.id = isShadow ? '__floatHotZone' : '__hotZone';
-    hot.style.cssText = 'position:fixed;top:0;left:0;width:60px;height:60px;z-index:2147483645;cursor:pointer;';
-    if (method === 'longpress') {
-      var timer = null;
-      hot.addEventListener('mousedown', function() { clearTimeout(timer); timer = setTimeout(show, 500); });
-      hot.addEventListener('touchstart', function(e) { e.preventDefault(); clearTimeout(timer); timer = setTimeout(show, 500); });
-      hot.addEventListener('mouseup', function() { clearTimeout(timer); });
-      hot.addEventListener('touchend', function() { clearTimeout(timer); });
-      hot.addEventListener('mouseleave', function() { clearTimeout(timer); });
-    } else if (method === 'dblclick') {
-      hot.addEventListener('dblclick', show);
-    }
-    function show() {
-      if (isShadow) {
-        var btn = shadow.getElementById('menuBtnWrap');
-        if (btn) btn.style.display = '';
-      } else {
-        var btn = _doc.getElementById('switchZone');
-        if (btn) btn.style.display = 'flex';
-      }
-      hot.style.display = 'none';
-    }
-    host.appendChild(hot);
   }
 
   /* ════════════════════════════════════════
@@ -288,9 +211,7 @@
           var all = sectionEl.querySelectorAll('.switch-method-item');
           for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
           item.classList.add('active');
-          menuApi.showToast('\u5207\u6362\u6210\u529F[' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method] + ']');
-          // 切换后重新应用显示方式
-          if (typeof setupDisplayMethodHome === 'function') setupDisplayMethodHome();
+          menuApi.showToast('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
         });
       })(items[i]);
     }
@@ -300,36 +221,17 @@
     console.log('[berry-remote] 开始增强原生菜单');
     menuApi.removePlaceholder();
 
-    var modeLabel = _doc.querySelector('.mode-label');
+    // 把 #menuTip 移入 .mode-label，实现同行显示
     var menuTip = _doc.getElementById('menuTip');
-
-    if (modeLabel) {
-      // 让 .mode-label 变成 flex 布局
+    var modeLabel = _doc.querySelector('.mode-label');
+    if (menuTip && modeLabel) {
       modeLabel.style.display = 'flex';
       modeLabel.style.alignItems = 'center';
       modeLabel.style.justifyContent = 'space-between';
       modeLabel.style.gap = '8px';
-
-      // 把原始 #menuTip 移入 .mode-label，实现同行显示
-      if (menuTip) {
-        menuTip.style.margin = '0';
-        menuTip.style.padding = '4px 8px';
-        modeLabel.appendChild(menuTip);
-      }
-
-      // 【关键】覆盖原生 showTip，防止原生逻辑把 #menuTip 移回原位置
-      var _origShowTip = menuApi.showTip;
-      menuApi.showTip = function (msg) {
-        // 先调用原生 showTip（它可能会移动 DOM）
-        if (typeof _origShowTip === 'function') {
-          try { _origShowTip.call(menuApi, msg); } catch (e) {}
-        }
-        // 原生调用完后，强制把 #menuTip 移回 .mode-label 内
-        var tip = _doc.getElementById('menuTip');
-        if (tip && tip.parentNode !== modeLabel) {
-          modeLabel.appendChild(tip);
-        }
-      };
+      menuTip.style.margin = '0';
+      menuTip.style.padding = '4px 8px';
+      modeLabel.appendChild(menuTip);
     }
 
     // 注入 CSS 覆盖 .menu-tip 行内样式（不动 HTML）
@@ -385,16 +287,18 @@
       key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u8BBF\u95EE\u94FE\u63A5',
       desc: savedCustomUrl || '\u8F93\u5165\u4EFB\u610F\u7F51\u5740', active: savedStyle === 'custom',
       onClick: function () { _showCustomUrl(menuApi, savedCustomUrl); }
-    });    // 显示方式：控制主页菜单按钮的显示时机
-    var savedMethod = storageGet('berry_home_switch_method', menuApi.hsGet('berry_home_switch_method')) || 'always';
+    });
+
+    // 切换方式
+    var savedMethod = storageGet('berry_home_switch_method', menuApi.hsGet('berry_home_switch_method')) || 'menu';
     injectSwitchMethodCSS();
     var switchSectionHTML =
       '<div class="switch-method-section">' +
-      '<div class="switch-method-label">🔄 显示方式<span class="switch-method-hint">（菜单按钮显示时机，默认左上角区域）</span></div>' +
+      '<div class="switch-method-label">\uD83D\uDD04 \u5207\u6362\u65B9\u5F0F</div>' +
       '<div class="switch-method-list">' +
-      '<div class="switch-method-item' + (savedMethod === 'always' ? ' active' : '') + '" data-method="always"><span>📌</span><span>常驻</span></div>' +
-      '<div class="switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-method="longpress"><span>⬅️</span><span>长按</span></div>' +
-      '<div class="switch-method-item' + (savedMethod === 'dblclick' ? ' active' : '') + '" data-method="dblclick"><span>👆</span><span>双击</span></div>' +
+      '<div class="switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-method="longpress"><span>\u2B05\uFE0F</span><span>\u957F\u6309</span></div>' +
+      '<div class="switch-method-item' + (savedMethod === 'tap' ? ' active' : '') + '" data-method="tap"><span>\uD83D\uDC46</span><span>\u70B9\u51FB</span></div>' +
+      '<div class="switch-method-item' + (savedMethod === 'menu' ? ' active' : '') + '" data-method="menu"><span>\u2630</span><span>\u83DC\u5355</span></div>' +
       '</div></div>';
     var switchSectionEl = menuApi.addSection(switchSectionHTML);
     if (switchSectionEl) bindSwitchMethodEvents(switchSectionEl, menuApi);
@@ -412,7 +316,6 @@
     }
 
     console.log('[berry-remote] 原生菜单增强完成');
-    setupDisplayMethodHome();
   }
 
   /* ════════════════════════════════════════
@@ -478,7 +381,7 @@
     }
 
     /* ========== 按钮 + 菜单 HTML ========== */
-    var savedMethod = storageGet('berry_home_switch_method') || 'always';
+    var savedMethod = storageGet('berry_home_switch_method') || 'menu';
     var css = getMenuCSS(isHome);
     var html = getMenuHTML(savedMethod, savedStyle, customUrl);
 
@@ -563,13 +466,12 @@
     }
 
     _page.__berryHandleSwitchMethod = function (method) {
-      storageSet("berry_home_switch_method", method);
-      var fmItems = shadow.querySelectorAll(".f-switch-method-item");
-      for (var k = 0; k < fmItems.length; k++) fmItems[k].classList.remove("active");
+      storageSet('berry_home_switch_method', method);
+      var fmItems = shadow.querySelectorAll('.f-switch-method-item');
+      for (var k = 0; k < fmItems.length; k++) fmItems[k].classList.remove('active');
       var t = shadow.querySelector('[data-fm="' + method + '"]');
-      if (t) t.classList.add("active");
-      showFloatTip("\u5207\u6362\u6210\u529F[" + ({ always: "\u5E38\u9A7B", longpress: "\u957F\u6309", dblclick: "\u53CC\u51FB" })[method] + "]");
-      setupDisplayMethodFloat(shadow);
+      if (t) t.classList.add('active');
+      showFloatTip('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
     };
 
     _page.__berryHandleApply = function () {
@@ -596,11 +498,10 @@
     try { _page.globalMenuClose = closeMenu; } catch (e) {}
 
     console.log('[berry-remote] 悬浮按钮已创建');
-    setupDisplayMethodFloat(shadow);
   }
 
   /* ========== 按钮 HTML ========== */
-  var BTN_HTML = '<div class="btn-wrap" id="menuBtnWrap">' +
+  var BTN_HTML = '<div class="btn-wrap">' +
     '<button type="button" class="btn" id="menuBtn" aria-label="\u6253\u5F00\u83DC\u5355">' +
     '<div class="menu-icon"><span></span><span></span><span></span></div>' +
     '</button></div>';
@@ -613,7 +514,7 @@
     var panelMargin = isHome ? (panelTop + ' 16px 20px 16px') : (panelTop + ' 16px 20px 0');
     return [
       ':host{display:block!important;overflow:visible!important}',
-      '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:' + btnLeft + '!important;z-index:2147483647;pointer-events:auto}',
+      '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:16px!important;z-index:2147483647;pointer-events:auto}',
       '.btn{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,0.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2147483647;transition:all 0.2s;border:1.5px solid rgba(255,255,255,0.4);outline:0;box-shadow:0 2px 8px rgba(0,0,0,0.15)}',
       '.btn:active{transform:scale(0.92);background:rgba(255,255,255,0.4)}',
       '.btn:hover{background:rgba(255,255,255,0.40);border-color:rgba(255,255,255,0.55);box-shadow:0 2px 12px rgba(0,0,0,0.2)}',
@@ -623,7 +524,7 @@
       ':host-context(html.berry-dark) .menu-icon span,:host-context(html.dark) .menu-icon span{background-color:#aaa}',
       '.f-menu-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:200;align-items:flex-start;justify-content:flex-start;overflow-y:auto;overflow-x:hidden}',
       '.f-menu-overlay.open{display:flex!important}',
-      '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92)}',
+      '.f-menu-panel{position:relative;margin:' + panelTop + ' 16px 20px;width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92)}',
       '.f-menu-title{font-size:15px;font-weight:600;color:#222;margin-top:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.06)}',
       '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}',
       '.f-home-style-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}',
@@ -642,12 +543,14 @@
       '.f-custom-url-section input[type="url"]:focus{border-color:#0a58f6}',
       '.f-custom-url-section button{height:34px;padding:0 12px;border-radius:10px;border:none;background:#0a58f6;color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;pointer-events:auto}',
       '.f-custom-url-section button:active{opacity:0.8}',
-      '.f-menu-tip{max-height:0;margin:0;padding:0 8px;background:rgba(10,88,246,0.08);border-radius:8px;display:flex;align-items:center;gap:4px;font-size:11px;color:#8e8e93;opacity:0;overflow:hidden;white-space:nowrap;transition:max-height 0.25s ease,opacity 0.25s ease,padding 0.25s ease}',
-      ':host-context(html.berry-dark) .f-menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
+      '.f-menu-tip{max-height:0;margin:0;padding:0 8px;background:rgba(10,88,246,0.08);border-radius:8px;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--slider-color);opacity:0;overflow:hidden;white-space:nowrap;transition:max-height 0.25s ease,opacity 0.25s ease,padding 0.25s ease}',
+      'html.berry-dark .f-menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
       '.f-menu-tip.show{max-height:32px;padding:4px 8px;opacity:1}',
       '.f-menu-tip .f-tip-icon{font-size:12px}',
-      '.f-menu-tip .f-tip-text{overflow:hidden;text-overflow:ellipsis;flex:1}',
-      '.f-switch-method-label{font-size:12px;font-weight:500;color:#8e8e93;margin-bottom:8px}',
+      '.f-menu-tip .f-tip-text{overflow:hidden;text-overflow:ellipsis}',
+      '.f-menu-tip .f-tip-icon{font-size:16px}',
+      '.f-menu-tip .f-tip-text{flex:1}',
+      '.f-switch-method-label{font-size:12px;color:#8e8e93;margin-bottom:8px}',
       '.f-switch-method-list{display:flex;gap:6px}',
       '.f-switch-method-item{flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid rgba(0,0,0,0.08);background:rgba(0,0,0,0.04);text-align:center;cursor:pointer;transition:all 0.15s;font-size:11px;color:#333;display:flex;align-items:center;justify-content:center;gap:2px;-webkit-tap-highlight-color:transparent;pointer-events:auto}',
       '.f-switch-method-item:active{background:rgba(0,0,0,0.08)}',
@@ -689,11 +592,11 @@
       '<div class="f-menu-tip" id="floatMenuTip"><span class="f-tip-icon">\u26A1</span><span class="f-tip-text"></span></div></div>' +
       '<div class="f-home-style-list">' + html + '</div>' +
       customInputHtml +
-      '<div class="f-switch-method-label">🔄 显示方式<span class="switch-method-hint">（菜单按钮显示时机，默认左上角区域）</span></div>' +
+      '<div class="f-switch-method-label">\uD83D\uDD04 \u5207\u6362\u65B9\u5F0F</div>' +
       '<div class="f-switch-method-list">' +
-      '<div class="f-switch-method-item' + (savedMethod === 'always' ? ' active' : '') + '" data-fm="always" onclick="__berryHandleSwitchMethod(\'always\')"><span>📌</span><span>常驻</span></div>' +
-      '<div class="f-switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-fm="longpress" onclick="__berryHandleSwitchMethod(\'longpress\')"><span>⬅️</span><span>长按</span></div>' +
-      '<div class="f-switch-method-item' + (savedMethod === 'dblclick' ? ' active' : '') + '" data-fm="dblclick" onclick="__berryHandleSwitchMethod(\'dblclick\')"><span>👆</span><span>双击</span></div>' +
+      '<div class="f-switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-fm="longpress" onclick="__berryHandleSwitchMethod(\'longpress\')"><span>\u2B05\uFE0F</span><span>\u957F\u6309</span></div>' +
+      '<div class="f-switch-method-item' + (savedMethod === 'tap' ? ' active' : '') + '" data-fm="tap" onclick="__berryHandleSwitchMethod(\'tap\')"><span>\uD83D\uDC46</span><span>\u70B9\u51FB</span></div>' +
+      '<div class="f-switch-method-item' + (savedMethod === 'menu' ? ' active' : '') + '" data-fm="menu" onclick="__berryHandleSwitchMethod(\'menu\')"><span>\u2630</span><span>\u83DC\u5355</span></div>' +
       '</div>' +
       '<div class="f-close-menu" onclick="__berryCloseMenu()">\u2715 \u5173\u95ED</div>' +
       '</div></div>'
