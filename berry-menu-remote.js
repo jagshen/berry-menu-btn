@@ -105,6 +105,11 @@
      ══════════════════════════════════════ */
   function setupDisplayMethodHome() {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
+    // 校验旧值（如 "menu"）自动 fallback 到 always
+    if (!/^(always|longpress|dblclick)$/.test(savedMethod)) {
+      savedMethod = 'always';
+      storageSet('berry_home_switch_method', 'always');
+    }
     var zone = _doc.getElementById('switchZone');
     if (!zone) return;
 
@@ -124,6 +129,11 @@
 
   function setupDisplayMethodFloat(shadow) {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
+    // 校验旧值自动 fallback 到 always
+    if (!/^(always|longpress|dblclick)$/.test(savedMethod)) {
+      savedMethod = 'always';
+      storageSet('berry_home_switch_method', 'always');
+    }
     var zone = shadow.getElementById('menuBtnWrap');
     var hotZone = shadow.getElementById('__floatHotZone');
     // 防止闪现：先强制隐藏，再由下面逻辑决定是否显示
@@ -278,7 +288,7 @@
           var all = sectionEl.querySelectorAll('.switch-method-item');
           for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
           item.classList.add('active');
-          menuApi.showToast('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method]);
+          menuApi.showToast('\u5207\u6362\u6210\u529F[' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method] + ']');
           // 切换后重新应用显示方式
           if (typeof setupDisplayMethodHome === 'function') setupDisplayMethodHome();
         });
@@ -538,7 +548,7 @@
       var isec = shadow.getElementById('floatCustomUrlSection');
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
 
-      var nameMap = { always: '常驻', longpress: '长按', dblclick: '双击' };
+      var nameMap = { default: '官方默认', itab: 'iTab', inftab: 'infTab', custom: '自定义' };
       showFloatTip('设置生效，下次启动[' + nameMap[styleKey] + ']');
     };
 
@@ -558,7 +568,7 @@
       for (var k = 0; k < fmItems.length; k++) fmItems[k].classList.remove("active");
       var t = shadow.querySelector('[data-fm="' + method + '"]');
       if (t) t.classList.add("active");
-      showFloatTip("切换方式已设为：" + ({ always: "常驻", longpress: "长按", dblclick: "双击" })[method]);
+      showFloatTip("\u5207\u6362\u6210\u529F[" + ({ always: "\u5E38\u9A7B", longpress: "\u957F\u6309", dblclick: "\u53CC\u51FB" })[method] + "]");
       setupDisplayMethodFloat(shadow);
     };
 
