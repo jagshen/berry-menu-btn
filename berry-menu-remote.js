@@ -1,7 +1,7 @@
 /**
- * Berry Menu Remote - 核心UI逻辑（远程加载版）
- * 依赖 userscript 注入的 window.__berryMenu 全局对象
- * 包含：主页增强 + 悬浮按钮(Shadow DOM) + 域名匹配
+ * Berry Menu Remote
+ * 依赖 userscript 注入的 window.__berryMenu
+ * 包含：主页增强 + 悬浮按钮 + 域名匹配
  * @version 2.0.3
  */
 (function () {
