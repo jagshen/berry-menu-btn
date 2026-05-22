@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.7
+ * @version 2.0.8
  */
 (function () {
   'use strict';
@@ -107,13 +107,17 @@
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
     var zone = _doc.getElementById('switchZone');
     if (!zone) return;
+
+    // 防止闪现：先强制隐藏，再由下面逻辑决定是否显示
+    zone.style.display = 'none';
+
     // 移除旧的热区
     var oldHot = _doc.getElementById('__hotZone');
     if (oldHot) oldHot.remove();
+
     if (savedMethod === 'always') {
       zone.style.display = '';
     } else {
-      zone.style.display = 'none';
       createHotZone(zone, savedMethod, false);
     }
   }
@@ -122,6 +126,8 @@
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
     var zone = shadow.getElementById('menuBtnWrap');
     var hotZone = shadow.getElementById('__floatHotZone');
+    // 防止闪现：先强制隐藏，再由下面逻辑决定是否显示
+    if (zone) zone.style.display = 'none';
     // 移除旧热区
     if (hotZone) hotZone.remove();
     if (savedMethod === 'always') {
@@ -153,7 +159,7 @@
         if (btn) btn.style.display = '';
       } else {
         var btn = _doc.getElementById('switchZone');
-        if (btn) btn.style.display = '';
+        if (btn) btn.style.display = 'flex';
       }
       hot.style.display = 'none';
     }
@@ -272,7 +278,9 @@
           var all = sectionEl.querySelectorAll('.switch-method-item');
           for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
           item.classList.add('active');
-          menuApi.showToast('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
+          menuApi.showToast('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method]);
+          // 切换后重新应用显示方式
+          if (typeof setupDisplayMethodHome === 'function') setupDisplayMethodHome();
         });
       })(items[i]);
     }
@@ -394,9 +402,8 @@
     }
 
     console.log('[berry-remote] 原生菜单增强完成');
-  }
-    // 初始化显示方式
     setupDisplayMethodHome();
+  }
 
   /* ════════════════════════════════════════
      非主页场景：创建独立悬浮菜单（Shadow DOM）
@@ -579,9 +586,8 @@
     try { _page.globalMenuClose = closeMenu; } catch (e) {}
 
     console.log('[berry-remote] 悬浮按钮已创建');
-  }
-    // 初始化显示方式
     setupDisplayMethodFloat(shadow);
+  }
 
   /* ========== 按钮 HTML ========== */
   var BTN_HTML = '<div class="btn-wrap" id="menuBtnWrap">' +
