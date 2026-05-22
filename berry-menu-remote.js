@@ -119,9 +119,8 @@
     menuApi.hsSet('berry_home_custom_url', url);
     menuApi.hsSet('berry_home_style', 'custom');
     menuApi.selectStyle('custom');
-    // 设置标记，表示这是用户手动触发的跳转
-    _page.__berryManualTrigger = true;
-    navigateTo(url);
+    menuApi.showToast('设置生效，下次启动[自定义]');
+    _hideCustomUrl();
   }
 
   function _showCustomUrl(menuApi, defaultValue) {
@@ -138,7 +137,7 @@
       sectionEl.id = 'scriptCustomUrlSection';
       sectionEl.innerHTML =
         '<input type="url" id="scriptCustomUrlInput" placeholder="https://example.com">' +
-        '<button id="scriptCustomUrlApplyBtn">\u524D\u5F80</button>';
+        '<button id="scriptCustomUrlApplyBtn">\u4FDD\u5B58</button>';
       switchSection.parentNode.insertBefore(sectionEl, switchSection);
     } else {
       var html =
@@ -234,9 +233,9 @@
       key: 'itab', icon: '\uD83D\uDD17', name: 'iTab\u65B0\u6807\u7B7E\u9875',
       desc: '\u5361\u7247\u7EC4\u4EF6\uFF0C\u597D\u770B\u597D\u7528', active: savedStyle === 'itab',
       onClick: function () {
-        _hideCustomUrl(); removeIframe();
+        _hideCustomUrl();
         storageSet('berry_home_style', 'itab'); menuApi.hsSet('berry_home_style', 'itab');
-        loadInIframe('https://go.itab.link/');
+        menuApi.selectStyle('itab');
       }
     });
 
@@ -244,9 +243,9 @@
       key: 'inftab', icon: '\uD83D\uDCF0', name: 'infTab\u4E3B\u9875',
       desc: '\u4E30\u5BCC\u56FE\u6807\uFF0C\u4E2A\u6027\u5B9A\u5236', active: savedStyle === 'inftab',
       onClick: function () {
-        _hideCustomUrl(); removeIframe();
+        _hideCustomUrl();
         storageSet('berry_home_style', 'inftab'); menuApi.hsSet('berry_home_style', 'inftab');
-        loadInIframe('https://inftab.com/');
+        menuApi.selectStyle('inftab');
       }
     });
 
@@ -280,18 +279,6 @@
     // custom模式不通知原生，避免重复导航
     if (savedStyle !== 'custom') {
       menuApi.selectStyle(savedStyle);
-    }
-
-    // 自动加载（仅在非用户手动触发时执行）
-    var isManualTrigger = (_page.__berryManualTrigger === true);
-    if (!isManualTrigger) {
-      if (savedStyle === 'custom' && savedCustomUrl) {
-        setTimeout(function () { navigateTo(savedCustomUrl); }, 50);
-      } else if (savedStyle === 'itab') {
-        setTimeout(function () { loadInIframe('https://go.itab.link/'); }, 300);
-      } else if (savedStyle === 'inftab') {
-        setTimeout(function () { loadInIframe('https://inftab.com/'); }, 300);
-      }
     }
 
     console.log('[berry-remote] 原生菜单增强完成');
@@ -428,32 +415,9 @@
       var isec = shadow.getElementById('floatCustomUrlSection');
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
 
-      var sn = { default: '\u5B98\u65B9\u9ED8\u8BA4', itab: 'iTab', inftab: 'infTab' };
-      showToast('\u5DF2\u5207\u6362\u5230' + (sn[styleKey] || styleKey));
+      var nameMap = { default: '官方默认', itab: 'iTab', inftab: 'infTab', custom: '自定义' };
+      showToast('设置生效，下次启动[' + nameMap[styleKey] + ']');
       closeMenu();
-
-      if (styleKey === 'itab' || styleKey === 'inftab') {
-        // itab/inftab：直接在iframe中加载，避免跳转主页导致的官方默认展示
-        removeIframe();
-        var url = (styleKey === 'itab') ? 'https://go.itab.link/' : 'https://inftab.com/';
-        setTimeout(function () { loadInIframe(url); }, 100);
-      } else if (styleKey === 'default') {
-        // default：跳转到主页
-        removeIframe();
-        setTimeout(function () {
-          var homeUrl;
-          if (typeof _page.BerryBrowser !== 'undefined') {
-            homeUrl = 'berry://navigate?url=' + encodeURIComponent('resource://rawfile/home.html');
-          } else if (_isBerry) {
-            homeUrl = 'resource://rawfile/home.html';
-          } else {
-            homeUrl = '';
-          }
-          if (homeUrl) {
-            try { location.href = homeUrl; } catch (ex) { window.open(homeUrl, '_blank'); }
-          }
-        }, 100);
-      }
     };
 
     _page.__berryHandleSwitchMethod = function (method) {
@@ -473,9 +437,10 @@
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       storageSet('berry_home_custom_url', url);
       storageSet('berry_home_style', 'custom');
-      showToast('\u5DF2\u8BBE\u7F6E\uFF0C\u8DF3\u8F6C\u4E2D\u2026');
+      showToast('设置生效，下次启动[自定义]');
       closeMenu();
-      setTimeout(function () { navigateTo(url); }, 500);
+      var isec = shadow.getElementById('floatCustomUrlSection');
+      if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
     };
 
     _page.__berryCloseMenu = function () { closeMenu(); };
@@ -560,7 +525,7 @@
     var customInputHtml =
       '<div class="f-custom-url-section' + (customInputVisible ? ' visible' : '') + '" id="floatCustomUrlSection">' +
       '<input type="url" id="floatCustomUrlInput" placeholder="https://example.com" value="' + (savedCustomUrl || '').replace(/"/g, '&quot;') + '">' +
-      '<button onclick="__berryHandleApply()">\u524D\u5F80</button></div>';
+      '<button onclick="__berryHandleApply()">\u4FDD\u5B58</button></div>';
 
     return (
       '<div class="f-menu-overlay" id="shadowMenuOverlay">' +
@@ -581,13 +546,27 @@
   }
 
   /* ════════════════════════════════════════
+     下次启动时加载保存的主页风格
+     ════════════════════════════════════════ */
+
+  function applySavedStyle() {
+    var savedStyle = storageGet('berry_home_style') || 'default';
+    var savedCustomUrl = storageGet('berry_home_custom_url') || '';
+
+    if (savedStyle === 'itab') {
+      setTimeout(function () { loadInIframe('https://go.itab.link/'); }, 50);
+    } else if (savedStyle === 'inftab') {
+      setTimeout(function () { loadInIframe('https://inftab.com/'); }, 50);
+    } else if (savedStyle === 'custom' && savedCustomUrl) {
+      setTimeout(function () { navigateTo(savedCustomUrl); }, 50);
+    }
+  }
+
+  /* ════════════════════════════════════════
      入口：根据页面类型分发
      ════════════════════════════════════════ */
 
   function main() {
-    // 清除手动触发标记，每次页面加载都重置
-    _page.__berryManualTrigger = false;
-
     var isHome = isHomePage();
     console.log('[berry-remote] main: isHome=' + isHome + ' url=' + location.href);
 
@@ -601,7 +580,11 @@
   /* ========== 等待 BerryHomeMenu API ========== */
   function initHomepageEnhance() {
     var menuApi = _page.BerryHomeMenu;
-    if (menuApi) { doEnhance(menuApi); return; }
+    if (menuApi) {
+      doEnhance(menuApi);
+      applySavedStyle();  // 下次启动时加载保存的风格
+      return;
+    }
 
     var retries = 0;
     var pollTimer = setInterval(function () {
@@ -610,6 +593,7 @@
       if (menuApi) {
         clearInterval(pollTimer);
         doEnhance(menuApi);
+        applySavedStyle();  // 下次启动时加载保存的风格
       } else if (retries > 30) {
         clearInterval(pollTimer);
         console.warn('[berry-remote] BerryHomeMenu API 未就绪，回退悬浮菜单');
