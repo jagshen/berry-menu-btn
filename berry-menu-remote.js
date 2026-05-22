@@ -119,6 +119,8 @@
     menuApi.hsSet('berry_home_custom_url', url);
     menuApi.hsSet('berry_home_style', 'custom');
     menuApi.selectStyle('custom');
+    // 设置标记，表示这是用户手动触发的跳转
+    _page.__berryManualTrigger = true;
     navigateTo(url);
   }
 
@@ -280,13 +282,16 @@
       menuApi.selectStyle(savedStyle);
     }
 
-    // 自动加载
-    if (savedStyle === 'custom' && savedCustomUrl) {
-      setTimeout(function () { navigateTo(savedCustomUrl); }, 50);
-    } else if (savedStyle === 'itab') {
-      setTimeout(function () { loadInIframe('https://go.itab.link/'); }, 300);
-    } else if (savedStyle === 'inftab') {
-      setTimeout(function () { loadInIframe('https://inftab.com/'); }, 300);
+    // 自动加载（仅在非用户手动触发时执行）
+    var isManualTrigger = (_page.__berryManualTrigger === true);
+    if (!isManualTrigger) {
+      if (savedStyle === 'custom' && savedCustomUrl) {
+        setTimeout(function () { navigateTo(savedCustomUrl); }, 50);
+      } else if (savedStyle === 'itab') {
+        setTimeout(function () { loadInIframe('https://go.itab.link/'); }, 300);
+      } else if (savedStyle === 'inftab') {
+        setTimeout(function () { loadInIframe('https://inftab.com/'); }, 300);
+      }
     }
 
     console.log('[berry-remote] 原生菜单增强完成');
@@ -427,7 +432,13 @@
       showToast('\u5DF2\u5207\u6362\u5230' + (sn[styleKey] || styleKey));
       closeMenu();
 
-      if (styleKey === 'default' || styleKey === 'itab' || styleKey === 'inftab') {
+      if (styleKey === 'itab' || styleKey === 'inftab') {
+        // itab/inftab：直接在iframe中加载，避免跳转主页导致的官方默认展示
+        removeIframe();
+        var url = (styleKey === 'itab') ? 'https://go.itab.link/' : 'https://inftab.com/';
+        setTimeout(function () { loadInIframe(url); }, 100);
+      } else if (styleKey === 'default') {
+        // default：跳转到主页
         removeIframe();
         setTimeout(function () {
           var homeUrl;
@@ -574,6 +585,9 @@
      ════════════════════════════════════════ */
 
   function main() {
+    // 清除手动触发标记，每次页面加载都重置
+    _page.__berryManualTrigger = false;
+
     var isHome = isHomePage();
     console.log('[berry-remote] main: isHome=' + isHome + ' url=' + location.href);
 
