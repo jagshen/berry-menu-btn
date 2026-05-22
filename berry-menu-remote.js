@@ -1,8 +1,8 @@
 /**
  * Berry Menu Remote
- * 依赖 userscript 注入全局对象
+ * 依赖 userscript 注入的 window.__berryMenu 全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.5
+ * @version 2.0.4
  */
 (function () {
   'use strict';
@@ -24,11 +24,16 @@
 
   function storageGet(key, defaultVal) {
     if (api.storageGet) return api.storageGet(key, defaultVal);
+    // fallback
     try {
       if (typeof _page.BerryBrowser !== 'undefined' && _page.BerryBrowser.homeStorageGet) {
         var v = _page.BerryBrowser.homeStorageGet(key);
         if (v !== null && v !== undefined && v !== '') return v;
       }
+    } catch (e) {}
+    try {
+      var lv = localStorage.getItem(key);
+      if (lv !== null && lv !== '') return lv;
     } catch (e) {}
     return defaultVal || null;
   }
@@ -40,6 +45,7 @@
         _page.BerryBrowser.homeStorageSet(key, val);
       }
     } catch (e) {}
+    try { localStorage.setItem(key, val); } catch (e) {}
   }
 
   function navigateTo(url) {
@@ -211,9 +217,7 @@
           var all = sectionEl.querySelectorAll('.switch-method-item');
           for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
           item.classList.add('active');
-          menuApi.showToast('\u5207\u6362\u6210\u529F[' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method] + ']');
-          // 切换后重新应用显示方式
-          if (typeof setupDisplayMethodHome === 'function') setupDisplayMethodHome();
+          menuApi.showToast('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
         });
       })(items[i]);
     }
@@ -222,53 +226,6 @@
   function doEnhance(menuApi) {
     console.log('[berry-remote] 开始增强原生菜单');
     menuApi.removePlaceholder();
-
-    var modeLabel = _doc.querySelector('.mode-label');
-    var menuTip = _doc.getElementById('menuTip');
-
-    if (modeLabel) {
-      // 让 .mode-label 变成 flex 布局
-      modeLabel.style.display = 'flex';
-      modeLabel.style.alignItems = 'center';
-      modeLabel.style.justifyContent = 'space-between';
-      modeLabel.style.gap = '8px';
-
-      // 把原始 #menuTip 移入 .mode-label，实现同行显示
-      if (menuTip) {
-        menuTip.style.margin = '0';
-        menuTip.style.padding = '4px 8px';
-        modeLabel.appendChild(menuTip);
-      }
-
-      // 【关键】覆盖原生 showTip，防止原生逻辑把 #menuTip 移回原位置
-      var _origShowTip = menuApi.showTip;
-      menuApi.showTip = function (msg) {
-        // 先调用原生 showTip（它可能会移动 DOM）
-        if (typeof _origShowTip === 'function') {
-          try { _origShowTip.call(menuApi, msg); } catch (e) {}
-        }
-        // 原生调用完后，强制把 #menuTip 移回 .mode-label 内
-        var tip = _doc.getElementById('menuTip');
-        if (tip && tip.parentNode !== modeLabel) {
-          modeLabel.appendChild(tip);
-        }
-      };
-    }
-
-    // 注入 CSS 覆盖 .menu-tip 行内样式（不动 HTML）
-    if (!_doc.getElementById('_berryMenuTipCSS')) {
-      var tipStyle = _doc.createElement('style');
-      tipStyle.id = '_berryMenuTipCSS';
-      tipStyle.textContent = [
-        '.mode-label{display:flex;align-items:center;justify-content:space-between;gap:8px}',
-        '.menu-tip{max-height:0;margin:0;padding:0 8px;background:rgba(10,88,246,0.08);border-radius:8px;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--slider-color);opacity:0;overflow:hidden;white-space:nowrap;transition:max-height 0.25s ease,opacity 0.25s ease,padding 0.25s ease}',
-        'html.berry-dark .menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
-        '.menu-tip.show{max-height:32px;padding:4px 8px;opacity:1}',
-        '.menu-tip .tip-icon{font-size:12px}',
-        '.menu-tip .tip-text{overflow:hidden;text-overflow:ellipsis}'
-      ].join('');
-      _doc.head.appendChild(tipStyle);
-    }
 
     var savedStyle = storageGet('berry_home_style', menuApi.hsGet('berry_home_style')) || 'default';
 
@@ -529,10 +486,8 @@
 
   /* ========== 悬浮菜单 CSS ========== */
   function getMenuCSS(isHome) {
-    var btnTop = isHome ? '45px' : '15px';
-    var panelTop = isHome ? '77px' : '47px';
-    var btnLeft = isHome ? '16px' : '0';
-    var panelMargin = isHome ? (panelTop + ' 16px 20px 16px') : (panelTop + ' 16px 20px 0');
+    var btnTop = isHome ? '45px' : '30px';
+    var panelTop = isHome ? '77px' : '62px';
     return [
       ':host{display:block!important;overflow:visible!important}',
       '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:16px!important;z-index:2147483647;pointer-events:auto}',
@@ -547,7 +502,7 @@
       '.f-menu-overlay.open{display:flex!important}',
       '.f-menu-panel{position:relative;margin:' + panelTop + ' 16px 20px;width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92)}',
       '.f-menu-title{font-size:15px;font-weight:600;color:#222;margin-top:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.06)}',
-      '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}',
+      '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px}',
       '.f-home-style-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}',
       '.f-home-style-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1.5px solid rgba(0,0,0,0.08);background:rgba(0,0,0,0.04);cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent;pointer-events:auto}',
       '.f-home-style-item:active{background:rgba(0,0,0,0.08);transform:scale(0.98)}',
@@ -564,11 +519,8 @@
       '.f-custom-url-section input[type="url"]:focus{border-color:#0a58f6}',
       '.f-custom-url-section button{height:34px;padding:0 12px;border-radius:10px;border:none;background:#0a58f6;color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;pointer-events:auto}',
       '.f-custom-url-section button:active{opacity:0.8}',
-      '.f-menu-tip{max-height:0;margin:0;padding:0 8px;background:rgba(10,88,246,0.08);border-radius:8px;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--slider-color);opacity:0;overflow:hidden;white-space:nowrap;transition:max-height 0.25s ease,opacity 0.25s ease,padding 0.25s ease}',
-      'html.berry-dark .f-menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
-      '.f-menu-tip.show{max-height:32px;padding:4px 8px;opacity:1}',
-      '.f-menu-tip .f-tip-icon{font-size:12px}',
-      '.f-menu-tip .f-tip-text{overflow:hidden;text-overflow:ellipsis}',
+      '.f-menu-tip{margin:8px 0;padding:10px 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:#0a58f6;opacity:0;transition:opacity 0.25s}',
+      '.f-menu-tip.show{opacity:1}',
       '.f-menu-tip .f-tip-icon{font-size:16px}',
       '.f-menu-tip .f-tip-text{flex:1}',
       '.f-switch-method-label{font-size:12px;color:#8e8e93;margin-bottom:8px}',
@@ -609,10 +561,10 @@
       '<div class="f-menu-overlay" id="shadowMenuOverlay">' +
       '<div class="f-menu-panel">' +
       '<div class="f-menu-title">\u4E3B\u9875\u8BBE\u7F6E</div>' +
-      '<div class="f-mode-label"><span>\uD83C\uDFE0 \u4E3B\u9875\u98CE\u683C</span>' +
-      '<div class="f-menu-tip" id="floatMenuTip"><span class="f-tip-icon">\u26A1</span><span class="f-tip-text"></span></div></div>' +
+      '<div class="f-mode-label">\uD83C\uDFE0 \u4E3B\u9875\u98CE\u683C</div>' +
       '<div class="f-home-style-list">' + html + '</div>' +
       customInputHtml +
+      '<div class="f-menu-tip" id="floatMenuTip"><span class="f-tip-icon">\u26A1</span><span class="f-tip-text"></span></div>' +
       '<div class="f-switch-method-label">\uD83D\uDD04 \u5207\u6362\u65B9\u5F0F</div>' +
       '<div class="f-switch-method-list">' +
       '<div class="f-switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-fm="longpress" onclick="__berryHandleSwitchMethod(\'longpress\')"><span>\u2B05\uFE0F</span><span>\u957F\u6309</span></div>' +
