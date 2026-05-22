@@ -2,7 +2,7 @@
  * Berry Menu Remote - 核心UI逻辑（远程加载版）
  * 依赖 userscript 注入的 window.__berryMenu 全局对象
  * 包含：主页增强 + 悬浮按钮(Shadow DOM) + 域名匹配
- * @version 2.0.2
+ * @version 2.0.3
  */
 (function () {
   'use strict';
@@ -333,7 +333,9 @@
 
     var host = _doc.createElement('div');
     host.id = 'globalMenuBtnHost';
-    var HOST_BTN_STYLE = 'position:fixed!important;top:30px!important;left:16px!important;width:36px!important;height:36px!important;z-index:2147483646!important;pointer-events:auto!important;overflow:visible!important';
+    var isHome = isHomePage();
+    var btnTop = isHome ? '45px' : '30px';
+    var HOST_BTN_STYLE = 'position:fixed!important;top:' + btnTop + '!important;left:16px!important;width:36px!important;height:36px!important;z-index:2147483646!important;pointer-events:auto!important;overflow:visible!important';
     var HOST_MENU_STYLE = 'position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;z-index:2147483646!important;pointer-events:auto!important;overflow:visible!important';
     host.style.cssText = HOST_BTN_STYLE;
     if (_doc.documentElement) {
@@ -534,7 +536,7 @@
     var items = [
       { key: 'default', icon: '\uD83D\uDCCC', name: '\u5B98\u65B9\u9ED8\u8BA4', desc: '\u5B98\u65B9\u9ED8\u8BA4\uFF0C\u7B80\u7EA6\u5BFC\u822A' },
       { key: 'itab', icon: '\uD83D\uDD17', name: 'iTab\u65B0\u6807\u7B7E\u9875', desc: '\u5361\u7247\u7EC4\u4EF6\uFF0C\u597D\u770B\u597D\u7528' },
-      { key: 'inftab', icon: '\uD83D\uDCF0', name: 'infTab\u4E3B\u9875', desc: '\u5BCC\u5BCD\u56FE\u6807\uFF0C\u4E2A\u6027\u5B9A\u5236' },
+      { key: 'inftab', icon: '\uD83D\uDCF0', name: 'infTab\u4E3B\u9875', desc: '\u4E30\u5BCC\u56FE\u6807\uFF0C\u4E2A\u6027\u5B9A\u5236' },
       { key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u8BBF\u95EE\u94FE\u63A5', desc: savedCustomUrl || '\u8F93\u5165\u4EFB\u610F\u7F51\u5740' }
     ];
     var html = '';
