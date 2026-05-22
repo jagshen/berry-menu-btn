@@ -211,7 +211,9 @@
           var all = sectionEl.querySelectorAll('.switch-method-item');
           for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
           item.classList.add('active');
-          menuApi.showToast('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ longpress: '\u957F\u6309', tap: '\u70B9\u51FB', menu: '\u83DC\u5355' })[method]);
+          menuApi.showToast('\u5207\u6362\u6210\u529F[' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method] + ']');
+          // 切换后重新应用显示方式
+          if (typeof setupDisplayMethodHome === 'function') setupDisplayMethodHome();
         });
       })(items[i]);
     }
@@ -221,17 +223,36 @@
     console.log('[berry-remote] 开始增强原生菜单');
     menuApi.removePlaceholder();
 
-    // 把 #menuTip 移入 .mode-label，实现同行显示
-    var menuTip = _doc.getElementById('menuTip');
     var modeLabel = _doc.querySelector('.mode-label');
-    if (menuTip && modeLabel) {
+    var menuTip = _doc.getElementById('menuTip');
+
+    if (modeLabel) {
+      // 让 .mode-label 变成 flex 布局
       modeLabel.style.display = 'flex';
       modeLabel.style.alignItems = 'center';
       modeLabel.style.justifyContent = 'space-between';
       modeLabel.style.gap = '8px';
-      menuTip.style.margin = '0';
-      menuTip.style.padding = '4px 8px';
-      modeLabel.appendChild(menuTip);
+
+      // 把原始 #menuTip 移入 .mode-label，实现同行显示
+      if (menuTip) {
+        menuTip.style.margin = '0';
+        menuTip.style.padding = '4px 8px';
+        modeLabel.appendChild(menuTip);
+      }
+
+      // 【关键】覆盖原生 showTip，防止原生逻辑把 #menuTip 移回原位置
+      var _origShowTip = menuApi.showTip;
+      menuApi.showTip = function (msg) {
+        // 先调用原生 showTip（它可能会移动 DOM）
+        if (typeof _origShowTip === 'function') {
+          try { _origShowTip.call(menuApi, msg); } catch (e) {}
+        }
+        // 原生调用完后，强制把 #menuTip 移回 .mode-label 内
+        var tip = _doc.getElementById('menuTip');
+        if (tip && tip.parentNode !== modeLabel) {
+          modeLabel.appendChild(tip);
+        }
+      };
     }
 
     // 注入 CSS 覆盖 .menu-tip 行内样式（不动 HTML）
