@@ -140,7 +140,7 @@
     var hot = _doc.createElement('div');
     hot.id = isShadow ? '__floatHotZone' : '__hotZone';
     var btnTop = (isShadow && !isHomePage()) ? '30px' : '45px';
-    hot.style.cssText = 'position:fixed;top:' + btnTop + ';left:0;width:60px;height:60px;z-index:9999;cursor:pointer;';
+    hot.style.cssText = 'position:fixed;top:' + btnTop + ';left:0;width:60px;height:60px;z-index:999999;cursor:pointer;';
 
     /* 单击穿透：将事件重新派发到底层元素 */
     function redispatch(e) {
@@ -459,8 +459,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     host.id = 'globalMenuBtnHost';
     var isHome = isHomePage();
     var btnTop = isHome ? '45px' : '15px';
-    var HOST_BTN_STYLE = 'position:fixed!important;top:' + btnTop + '!important;left:16px!important;width:36px!important;height:36px!important;z-index:10000!important;pointer-events:auto!important;overflow:visible!important';
-    var HOST_MENU_STYLE = 'position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;z-index:10000!important;pointer-events:auto!important;overflow:visible!important';
+    var HOST_BTN_STYLE = 'position:fixed!important;top:' + btnTop + '!important;left:16px!important;width:36px!important;height:36px!important;z-index:999998!important;pointer-events:auto!important;overflow:visible!important';
+    var HOST_MENU_STYLE = 'position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;z-index:999998!important;pointer-events:auto!important;overflow:visible!important';
     host.style.cssText = HOST_BTN_STYLE;
     if (_doc.documentElement) {
       _doc.documentElement.appendChild(host);
@@ -602,8 +602,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     var panelMargin = (panelTop + ' 16px 20px 16px');
     return [
       ':host{display:block!important;overflow:visible!important}',
-      '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:' + btnLeft + '!important;z-index:10001;pointer-events:auto}',
-      '.btn{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,0.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10001;transition:all 0.2s;border:1.5px solid rgba(255,255,255,0.4);outline:0;box-shadow:0 2px 8px rgba(0,0,0,0.15);-webkit-tap-highlight-color:transparent}',
+      '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:' + btnLeft + '!important;z-index:999999;pointer-events:auto}',
+      '.btn{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,0.25);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:999999;transition:all 0.2s;border:1.5px solid rgba(255,255,255,0.4);outline:0;box-shadow:0 2px 8px rgba(0,0,0,0.15);-webkit-tap-highlight-color:transparent}',
       '.btn:active{transform:scale(0.92);background:rgba(255,255,255,0.4)}',
       '.btn:hover{background:rgba(255,255,255,0.40);border-color:rgba(255,255,255,0.55);box-shadow:0 2px 12px rgba(0,0,0,0.2)}',
       'html.berry-dark .btn,html.dark .btn,[data-theme="dark"] .btn{background:rgba(30,30,30,0.5);border-color:rgba(255,255,255,0.25);box-shadow:0 2px 8px rgba(0,0,0,0.3)}',
