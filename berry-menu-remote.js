@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.9
+ * @version 2.0.10
  */
 (function () {
   'use strict';
@@ -190,7 +190,7 @@
     menuApi.hsSet('berry_home_custom_url', url);
     menuApi.hsSet('berry_home_style', 'custom');
     menuApi.selectStyle('custom');
-    menuApi.showTip('设置生效，下次启动[自定义]');
+    menuApi.showTip('设置成功，重启生效');
     navigateTo(url);
     _hideCustomUrl();
   }
@@ -289,8 +289,7 @@
           var all = sectionEl.querySelectorAll('.switch-method-item');
           for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
           item.classList.add('active');
-          menuApi.showTip('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method]);
-        });
+          menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
       })(items[i]);
     }
   }
@@ -358,7 +357,7 @@
     if (defaultItem) {
       defaultItem.addEventListener('click', function() {
         menuApi.selectStyle('default');
-        menuApi.showTip('设置生效，下次启动[官方默认]');
+        menuApi.showTip('设置成功，重启生效');
       });
     }
     var savedCustomUrl = storageGet('berry_home_custom_url', menuApi.hsGet('berry_home_custom_url')) || '';
@@ -370,7 +369,7 @@
         _hideCustomUrl();
         storageSet('berry_home_style', 'itab'); menuApi.hsSet('berry_home_style', 'itab');
         menuApi.selectStyle('itab');
-        menuApi.showTip('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[iTab]');
+        menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
       }
     });
 
@@ -381,7 +380,7 @@
         _hideCustomUrl();
         storageSet('berry_home_style', 'inftab'); menuApi.hsSet('berry_home_style', 'inftab');
         menuApi.selectStyle('inftab');
-        menuApi.showTip('\u8BBE\u7F6E\u751F\u6548\uFF0C\u4E0B\u6B21\u542F\u52A8[infTab]');
+        menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
       }
     });
 
@@ -537,7 +536,7 @@
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
 
       var nameMap = { default: '官方默认', itab: 'iTab', inftab: 'infTab', custom: '自定义' };
-      showFloatTip('设置生效，下次启动[' + nameMap[styleKey] + ']');
+      showFloatTip('设置成功，重启生效');
     };
 
     function showFloatTip(msg) {
@@ -568,7 +567,7 @@
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       storageSet('berry_home_custom_url', url);
       storageSet('berry_home_style', 'custom');
-      showFloatTip('设置生效，下次启动[自定义]');
+      showFloatTip('设置成功，重启生效');
       navigateTo(url);
       closeMenu();
       var isec = shadow.querySelector('#floatCustomUrlSection');
