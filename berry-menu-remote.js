@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.8
+ * @version 2.0.9
  */
 (function () {
   'use strict';
@@ -289,7 +289,7 @@
           var all = sectionEl.querySelectorAll('.switch-method-item');
           for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
           item.classList.add('active');
-          menuApi.showToast('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method]);
+          menuApi.showTip('\u5207\u6362\u65B9\u5F0F\u5DF2\u8BBE\u4E3A\uFF1A' + ({ always: '\u5E38\u9A7B', longpress: '\u957F\u6309', dblclick: '\u53CC\u51FB' })[method]);
         });
       })(items[i]);
     }
@@ -308,6 +308,8 @@
       modeLabel.style.alignItems = 'center';
       modeLabel.style.justifyContent = 'space-between';
       modeLabel.style.gap = '8px';
+      modeLabel.style.flexWrap = 'nowrap';
+      modeLabel.style.whiteSpace = 'nowrap';
 
       // 把原始 #menuTip 移入 .mode-label，实现同行显示
       if (menuTip) {
@@ -344,7 +346,7 @@
         'html.berry-dark .menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
         '.menu-tip.show{opacity:1}',
         '.menu-tip .tip-icon{font-size:16px}',
-        '.menu-tip .tip-text{flex:1}'
+        '.menu-tip .tip-text{flex:1;white-space: nowrap;}'
       ].join('');
       _doc.head.appendChild(tipStyle);
     }
@@ -403,11 +405,11 @@
 
     if (savedStyle === 'custom' && savedCustomUrl) _showCustomUrl(menuApi, savedCustomUrl);
 
-    if (typeof menuApi.onStyleChange === 'function') {
-      menuApi.onStyleChange(function (newStyle) {
-        if (newStyle === 'default') removeIframe();
-      });
-    }
+    // if (typeof menuApi.onStyleChange === 'function') {
+    //   menuApi.onStyleChange(function (newStyle) {
+    //     if (newStyle === 'default') removeIframe();
+    //   });
+    // }
     // custom模式不通知原生，避免重复导航
     if (savedStyle !== 'custom') {
       menuApi.selectStyle(savedStyle);
@@ -597,7 +599,7 @@
   function getMenuCSS(isHome) {
     var btnTop = isHome ? '45px' : '15px';
     var panelTop = isHome ? '77px' : '47px';
-    var btnLeft = isHome ? '16px' : '0';
+    var btnLeft = '16px';
     var panelMargin = isHome ? (panelTop + ' 16px 20px 16px') : (panelTop + ' 16px 20px 0');
     return [
       ':host{display:block!important;overflow:visible!important}',
@@ -613,7 +615,7 @@
       '.f-menu-overlay.open{display:flex!important}',
       '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92)}',
       '.f-menu-title{font-size:15px;font-weight:600;color:#222;margin-top:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.06)}',
-      '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}',
+      '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap}',
       '.f-home-style-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}',
       '.f-home-style-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1.5px solid rgba(0,0,0,0.08);background:rgba(0,0,0,0.04);cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent;pointer-events:auto}',
       '.f-home-style-item:active{background:rgba(0,0,0,0.08);transform:scale(0.98)}',
@@ -637,7 +639,7 @@
       ':host-context(html.berry-dark) .f-menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
       '.f-menu-tip.show{opacity:1}',
       '.f-menu-tip .f-tip-icon{font-size:16px}',
-      '.f-menu-tip .f-tip-text{overflow:hidden;text-overflow:ellipsis;flex:1}',
+      '..f-menu-tip .f-tip-text{overflow:hidden;text-overflow:ellipsis;flex:1;white-space:nowrap}',
       '.f-switch-method-label{font-size:12px;font-weight:500;color:#8e8e93;margin-bottom:8px}',
       '.switch-method-hint{font-size:11px;color:#8e8e93;font-weight:400}',
       '.f-switch-method-list{display:flex;gap:6px}',
