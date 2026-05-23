@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.1.0
+ * @version 2.1.1
  */
 (function () {
   'use strict';
@@ -312,8 +312,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
 
       // 把原始 #menuTip 移入 .mode-label，实现同行显示
       if (menuTip) {
-        menuTip.style.margin = '8px 0';
-        menuTip.style.padding = '10px 12px';
+        menuTip.style.margin = '0';
+        menuTip.style.padding = '6px 12px';
         modeLabel.appendChild(menuTip);
       }
 
@@ -341,7 +341,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       tipStyle.textContent = [
         '.mode-label{display:flex;align-items:center;justify-content:space-between;gap:8px}',
         /* 对齐原生 .menu-tip 样式：大方块 + 纯 opacity 淡入 */
-        '.menu-tip{margin:8px 0;padding:10px 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
+        '.menu-tip{margin:0;padding:0 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
         'html.berry-dark .menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
         '.menu-tip.show{opacity:1}',
         '.menu-tip .tip-icon{font-size:16px}',
@@ -599,7 +599,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     var btnTop = isHome ? '45px' : '15px';
     var panelTop = isHome ? '77px' : '47px';
     var btnLeft = '16px';
-    var panelMargin = isHome ? (panelTop + ' 16px 20px 16px') : (panelTop + ' 16px 20px 0');
+    var panelMargin = (panelTop + ' 16px 20px 16px');
     return [
       ':host{display:block!important;overflow:visible!important}',
       '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:' + btnLeft + '!important;z-index:10001;pointer-events:auto}',
@@ -634,7 +634,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       '.f-custom-url-section button{height:38px;padding:0 14px;border-radius:10px;border:none;background:var(--slider-color, #0a58f6);color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;pointer-events:auto;-webkit-tap-highlight-color:transparent}',
       '.f-custom-url-section button:active{opacity:0.8}',
       /* 对齐原生 .menu-tip 样式 */
-      '.f-menu-tip{margin:8px 0;padding:10px 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
+      '.f-menu-tip{margin:0;padding:0 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
       ':host-context(html.berry-dark) .f-menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
       '.f-menu-tip.show{opacity:1}',
       '.f-menu-tip .f-tip-icon{font-size:16px}',
