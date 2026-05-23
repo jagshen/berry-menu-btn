@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.0.10
+ * @version 2.1.0
  */
 (function () {
   'use strict';
@@ -278,21 +278,21 @@
     _doc.head.appendChild(style);
   }
 
-  function bindSwitchMethodEvents(sectionEl, menuApi) {
+function bindSwitchMethodEvents(sectionEl, menuApi) {
     var items = sectionEl.querySelectorAll('.switch-method-item');
     for (var i = 0; i < items.length; i++) {
-      (function (item) {
-        item.addEventListener('click', function () {
-          var method = item.getAttribute('data-method');
-          storageSet('berry_home_switch_method', method);
-          menuApi.hsSet('berry_home_switch_method', method);
-          var all = sectionEl.querySelectorAll('.switch-method-item');
-          for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
-          item.classList.add('active');
-          menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
-      })(items[i]);
+        var item = items[i];
+        item.addEventListener('click', function() {
+            var method = this.getAttribute('data-method');
+            storageSet('berry_home_switch_method', method);
+            menuApi.hsSet('berry_home_switch_method', method);
+            var all = sectionEl.querySelectorAll('.switch-method-item');
+            for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+            this.classList.add('active');
+            menuApi.showTip('设置成功，重启生效');
+        });
     }
-  }
+}
 
   function doEnhance(menuApi) {
     if (_DEBUG) console.log('[berry-remote] 开始增强原生菜单');
@@ -638,7 +638,7 @@
       ':host-context(html.berry-dark) .f-menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
       '.f-menu-tip.show{opacity:1}',
       '.f-menu-tip .f-tip-icon{font-size:16px}',
-      '..f-menu-tip .f-tip-text{overflow:hidden;text-overflow:ellipsis;flex:1;white-space:nowrap}',
+      '.f-menu-tip .f-tip-text{overflow:hidden;text-overflow:ellipsis;flex:1;white-space:nowrap}',
       '.f-switch-method-label{font-size:12px;font-weight:500;color:#8e8e93;margin-bottom:8px}',
       '.switch-method-hint{font-size:11px;color:#8e8e93;font-weight:400}',
       '.f-switch-method-list{display:flex;gap:6px}',
