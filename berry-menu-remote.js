@@ -55,7 +55,7 @@
   function isHomePage() {
     if (config.isHome !== undefined) return config.isHome;
     var href = (location && location.href) || '';
-    return href.indexOf('resource://rawfile/home.html') !== -1;
+    return href.indexOf('resource://rawfile/') !== -1;
   }
 
   /* ========== iframe 内嵌模式 ========== */
