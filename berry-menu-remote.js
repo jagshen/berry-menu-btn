@@ -826,7 +826,6 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       } else if (retries > 30) {
         clearInterval(pollTimer);
         console.warn('[berry-remote] BerryHomeMenu API 未就绪，回退悬浮菜单');
-        initFloatingMenu();
       }
     }, 100);
   }
