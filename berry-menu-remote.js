@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.1.2
+ * @version 2.1.3
  */
 (function () {
   'use strict';
@@ -104,7 +104,7 @@
   /* ══════════════════════════════════════
      显示方式逻辑（always/longpress/dblclick）
      ══════════════════════════════════════ */
-  function setupDisplayMethodHome() {
+  function setupDisplayMethodHome(isFlash) {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
     var zone = _doc.getElementById('switchZone')
         || _doc.getElementById('menuBtnWrap')
@@ -117,11 +117,11 @@
       zone.style.display = '';
     } else {
       zone.style.display = 'none';
-      createHotZone(zone, savedMethod, false);
+      createHotZone(zone, savedMethod, false, null, isFlash || false);
     }
   }
 
-  function setupDisplayMethodFloat(shadow) {
+  function setupDisplayMethodFloat(shadow, isFlash) {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
     var zone = shadow.querySelector('#menuBtnWrap');
     var hotZone = shadow.querySelector('#__floatHotZone');
@@ -131,11 +131,11 @@
       if (zone) zone.style.display = '';
     } else {
       if (zone) zone.style.display = 'none';
-      createHotZone(zone, savedMethod, true, shadow);
+      createHotZone(zone, savedMethod, true, shadow, isFlash || false);
     }
   }
 
-  function createHotZone(targetBtn, method, isShadow, shadow) {
+  function createHotZone(targetBtn, method, isShadow, shadow, isFlash) {
     var hot = _doc.createElement('div');
     hot.id = isShadow ? '__floatHotZone' : '__hotZone';
     var btnTop = (isShadow && !isHomePage()) ? '30px' : '45px';
@@ -161,6 +161,23 @@
     } else if (method === 'dblclick') {
       hot.addEventListener('click', function(e) { redispatch(e); });
       hot.addEventListener('dblclick', show);
+    } else {
+      // 常驻模式：点击菜单按钮区域打开菜单，其他区域穿透
+      hot.addEventListener('click', function(e) {
+        // 检查是否在菜单按钮范围内（按钮位置：top:30px/45px, left:16px, 大小：28x28）
+        var btnTop = (isShadow && !isHomePage()) ? '30px' : '45px';
+        var btnLeft = 16;
+        var btnSize = 28;
+        
+        if (e.clientX >= btnLeft && e.clientX <= btnLeft + btnSize &&
+            e.clientY >= btnTop && e.clientY <= btnTop + btnSize) {
+          // 点击按钮区域，打开菜单
+          toggleMenu();
+        } else {
+          // 点击其他区域，穿透到下层元素
+          redispatch(e);
+        }
+      });
     }
     function show() {
       if (isShadow) {
@@ -174,20 +191,26 @@
     }
     _doc.documentElement.appendChild(hot);
     
-    // 热区闪烁效果（3次闪烁，每次300ms）
-    var flashCount = 0;
-    var maxFlashes = 3;
-    hot.style.background = 'rgba(10,88,246,0.3)';
-    var flashInterval = setInterval(function() {
-      if (flashCount >= maxFlashes) {
-        clearInterval(flashInterval);
-        // 闪烁后完全透明，不显示
-        hot.style.background = 'transparent';
-        return;
-      }
-      flashCount++;
-      hot.style.background = flashCount % 2 === 0 ? 'rgba(10,88,246,0.3)' : 'transparent';
-    }, 300);
+    // 只在用户手动切换时闪烁
+    if (isFlash) {
+      // 热区闪烁效果（3次闪烁，每次300ms）
+      var flashCount = 0;
+      var maxFlashes = 3;
+      hot.style.background = 'rgba(10,88,246,0.3)';
+      var flashInterval = setInterval(function() {
+        if (flashCount >= maxFlashes) {
+          clearInterval(flashInterval);
+          // 闪烁后完全透明，不显示
+          hot.style.background = 'transparent';
+          return;
+        }
+        flashCount++;
+        hot.style.background = flashCount % 2 === 0 ? 'rgba(10,88,246,0.3)' : 'transparent';
+      }, 300);
+    } else {
+      // 正常加载时不闪烁，直接透明
+      hot.style.background = 'transparent';
+    }
   }
 
   /* ════════════════════════════════════════
@@ -304,6 +327,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
             for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
             this.classList.add('active');
             menuApi.showTip('设置成功，重启生效');
+            setupDisplayMethodHome(true);
         });
     }
 }
@@ -569,7 +593,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       var t = shadow.querySelector('[data-fm="' + method + '"]');
       if (t) t.classList.add("active");
       showFloatTip('设置成功，重启生效');
-      setupDisplayMethodFloat(shadow);
+      setupDisplayMethodFloat(shadow, true);
     };
 
     _page.__berryHandleApply = function () {
@@ -599,6 +623,23 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
 
     // 初始化显示方式
     setupDisplayMethodFloat(shadow);
+    
+    // 添加主页风格事件委托
+    shadow.querySelector('#shadowMenuOverlay').addEventListener('click', function(e) {
+      var target = e.target.closest('.f-home-style-item');
+      if (target) {
+        var styleKey = target.getAttribute('data-fstyle');
+        if (styleKey && typeof _page.__berryHandleStyleClick === 'function') {
+          _page.__berryHandleStyleClick(styleKey);
+        }
+      }
+    });
+    
+    // 添加自定义链接按钮事件
+    var applyBtn = shadow.querySelector('#floatApplyBtn');
+    if (applyBtn && typeof _page.__berryHandleApply === 'function') {
+      applyBtn.addEventListener('click', _page.__berryHandleApply);
+    }
   }
 
   /* ========== 按钮 HTML ========== */
