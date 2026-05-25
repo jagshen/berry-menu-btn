@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.1.6
+ * @version 2.1.7
  */
 (function () {
   'use strict';
@@ -517,8 +517,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
     var css = getMenuCSS(isHome);
     var html = getMenuHTML(savedMethod, savedStyle, customUrl);
-
-    shadow.innerHTML = '<style>' + css + '</style>' + BTN_HTML + html;
+    shadow.innerHTML = '<style>' + css + '</style>' + html;
 
     /* ========== 交互 ========== */
     var btn = shadow.querySelector('#menuBtn');
@@ -663,12 +662,6 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     }
   }
 
-  /* ========== 按钮 HTML ========== */
-  var BTN_HTML = '<div class="btn-wrap" id="menuBtnWrap">' +
-    '<button type="button" class="btn" id="menuBtn" aria-label="\u6253\u5F00\u83DC\u5355">' +
-    '<div class="menu-icon"><span></span><span></span><span></span></div>' +
-    '</button></div>';
-
   /* ========== 悬浮菜单 CSS ========== */
   function getMenuCSS(isHome) {
     var btnTop = isHome ? '45px' : '15px';
@@ -726,8 +719,14 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     ].join('');
   }
 
-  /* ========== 悬浮菜单 HTML ========== */
+  /* ========== 悬浮菜单 HTML（包含按钮，且按钮初始 display 由 savedMethod 决定） ========== */
   function getMenuHTML(savedMethod, savedStyle, savedCustomUrl) {
+    var btnDisplay = (savedMethod === 'always') ? 'block' : 'none';
+    var btnHtml = '<div class="btn-wrap" id="menuBtnWrap" style="display:' + btnDisplay + ';">' +
+                  '<button type="button" class="btn" id="menuBtn" aria-label="打开菜单">' +
+                  '<div class="menu-icon"><span></span><span></span><span></span></div>' +
+                  '</button></div>';
+    
     var items = [
       { key: 'default', icon: '\uD83D\uDCCC', name: '\u5B98\u65B9\u9ED8\u8BA4', desc: '\u5B98\u65B9\u9ED8\u8BA4\uFF0C\u7B80\u7EA6\u5BFC\u822A' },
       { key: 'itab', icon: '\uD83D\uDD17', name: 'iTab\u65B0\u6807\u7B7E\u9875', desc: '\u5361\u7247\u7EC4\u4EF6\uFF0C\u597D\u770B\u597D\u7528' },
@@ -750,7 +749,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       '<input type="url" id="floatCustomUrlInput" placeholder="https://www.limestart.cn" value="' + (savedCustomUrl || '').replace(/"/g, '&quot;') + '">' +
       '<button id="floatApplyBtn">\u524D\u5F80</button></div>';
 
-    return (
+    return btnHtml +
       '<div class="f-menu-overlay" id="shadowMenuOverlay">' +
       '<div class="f-menu-panel">' +
       '<div class="f-menu-title">\u6781\u7B80\u4E3B\u9875</div>' +
@@ -766,7 +765,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       '</div>' +
       '<div class="f-close-menu">\u2715 \u5173\u95ED</div>' +
       '</div></div>'
-    );
+    ;
   }
 
   /* ════════════════════════════════════════
@@ -825,7 +824,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
         doEnhance(menuApi);  // 下次启动时加载保存的风格
       } else if (retries > 30) {
         clearInterval(pollTimer);
-        console.warn('[berry-remote] BerryHomeMenu API 未就绪，回退悬浮菜单');
+        console.warn('[berry-remote] BerryHomeMenu API 未就绪，放弃增强'); // 不再创建悬浮按钮
       }
     }, 100);
   }
