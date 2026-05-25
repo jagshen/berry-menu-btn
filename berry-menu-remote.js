@@ -600,7 +600,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       var fui = shadow.querySelector('#floatCustomUrlInput');
       if (!fui) return;
       var url = fui.value.trim();
-      iif (!url) { url = 'https://www.limestart.cn'; }
+      if (!url) { url = 'https://www.limestart.cn'; }
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       storageSet('berry_home_custom_url', url);
       storageSet('berry_home_style', 'custom');
