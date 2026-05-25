@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强 + 悬浮按钮 + 域名匹配
- * @version 2.1.1
+ * @version 2.1.2
  */
 (function () {
   'use strict';
@@ -136,11 +136,10 @@
   }
 
   function createHotZone(targetBtn, method, isShadow, shadow) {
-    var host = isShadow ? shadow.querySelector('.btn-wrap').parentNode : (targetBtn && targetBtn.parentNode) || _doc.body;
     var hot = _doc.createElement('div');
     hot.id = isShadow ? '__floatHotZone' : '__hotZone';
     var btnTop = (isShadow && !isHomePage()) ? '30px' : '45px';
-    hot.style.cssText = 'position:fixed;top:' + btnTop + ';left:0;width:60px;height:60px;z-index:999999;cursor:pointer;';
+    hot.style.cssText = 'position:fixed;top:' + btnTop + ';left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:auto;';
 
     /* 单击穿透：将事件重新派发到底层元素 */
     function redispatch(e) {
@@ -173,7 +172,22 @@
       }
       hot.remove();
     }
-    host.appendChild(hot);
+    _doc.documentElement.appendChild(hot);
+    
+    // 热区闪烁效果（3次闪烁，每次300ms）
+    var flashCount = 0;
+    var maxFlashes = 3;
+    hot.style.background = 'rgba(10,88,246,0.3)';
+    var flashInterval = setInterval(function() {
+      if (flashCount >= maxFlashes) {
+        clearInterval(flashInterval);
+        // 闪烁后完全透明，不显示
+        hot.style.background = 'transparent';
+        return;
+      }
+      flashCount++;
+      hot.style.background = flashCount % 2 === 0 ? 'rgba(10,88,246,0.3)' : 'transparent';
+    }, 300);
   }
 
   /* ════════════════════════════════════════
@@ -208,13 +222,13 @@
       sectionEl.className = 'custom-url-section';
       sectionEl.id = 'scriptCustomUrlSection';
       sectionEl.innerHTML =
-        '<input type="url" id="scriptCustomUrlInput" placeholder="https://example.com">' +
+        '<input type="url" id="scriptCustomUrlInput" placeholder="https://www.limestart.cn">' +
         '<button id="scriptCustomUrlApplyBtn">\u524D\u5F80</button>';
       switchSection.parentNode.insertBefore(sectionEl, switchSection);
     } else {
       var html =
         '<div class="custom-url-section" id="scriptCustomUrlSection">' +
-        '<input type="url" id="scriptCustomUrlInput" placeholder="https://example.com">' +
+        '<input type="url" id="scriptCustomUrlInput" placeholder="https://www.limestart.cn">' +
         '<button id="scriptCustomUrlApplyBtn">\u524D\u5F80</button>' +
         '</div>';
       sectionEl = menuApi.addSection(html);
@@ -313,7 +327,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       // 把原始 #menuTip 移入 .mode-label，实现同行显示
       if (menuTip) {
         menuTip.style.margin = '0';
-        menuTip.style.padding = '6px 12px';
+        menuTip.style.padding = '0 3px';
         modeLabel.appendChild(menuTip);
       }
 
@@ -341,7 +355,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       tipStyle.textContent = [
         '.mode-label{display:flex;align-items:center;justify-content:space-between;gap:8px}',
         /* 对齐原生 .menu-tip 样式：大方块 + 纯 opacity 淡入 */
-        '.menu-tip{margin:0;padding:0 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
+        '.menu-tip{margin:0;padding:0 3px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
         'html.berry-dark .menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
         '.menu-tip.show{opacity:1}',
         '.menu-tip .tip-icon{font-size:16px}',
@@ -535,7 +549,6 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       var isec = shadow.querySelector('#floatCustomUrlSection');
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
 
-      var nameMap = { default: '官方默认', itab: 'iTab', inftab: 'infTab', custom: '自定义' };
       showFloatTip('设置成功，重启生效');
     };
 
@@ -555,7 +568,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       for (var k = 0; k < fmItems.length; k++) fmItems[k].classList.remove("active");
       var t = shadow.querySelector('[data-fm="' + method + '"]');
       if (t) t.classList.add("active");
-      showFloatTip("切换方式已设为：" + ({ always: "常驻", longpress: "长按", dblclick: "双击" })[method]);
+      showFloatTip('设置成功，重启生效');
       setupDisplayMethodFloat(shadow);
     };
 
@@ -634,7 +647,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       '.f-custom-url-section button{height:38px;padding:0 14px;border-radius:10px;border:none;background:var(--slider-color, #0a58f6);color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;box-sizing:border-box;pointer-events:auto;-webkit-tap-highlight-color:transparent}',
       '.f-custom-url-section button:active{opacity:0.8}',
       /* 对齐原生 .menu-tip 样式 */
-      '.f-menu-tip{margin:0;padding:0 12px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
+      '.f-menu-tip{margin:0;padding:0 3px;background:rgba(10,88,246,0.08);border-radius:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slider-color,#0a58f6);opacity:0;transition:opacity 0.25s}',
       ':host-context(html.berry-dark) .f-menu-tip{background:rgba(249,115,22,0.12);color:#f97316}',
       '.f-menu-tip.show{opacity:1}',
       '.f-menu-tip .f-tip-icon{font-size:16px}',
@@ -657,13 +670,13 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       { key: 'default', icon: '\uD83D\uDCCC', name: '\u5B98\u65B9\u9ED8\u8BA4', desc: '\u5B98\u65B9\u9ED8\u8BA4\uFF0C\u7B80\u7EA6\u5BFC\u822A' },
       { key: 'itab', icon: '\uD83D\uDD17', name: 'iTab\u65B0\u6807\u7B7E\u9875', desc: '\u5361\u7247\u7EC4\u4EF6\uFF0C\u597D\u770B\u597D\u7528' },
       { key: 'inftab', icon: '\uD83D\uDCF0', name: 'infTab\u4E3B\u9875', desc: '\u4E30\u5BCC\u56FE\u6807\uFF0C\u4E2A\u6027\u5B9A\u5236' },
-      { key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u8BBF\u95EE\u94FE\u63A5', desc: savedCustomUrl || '\u8F93\u5165\u4EFB\u610F\u7F51\u5740' }
+      { key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u94FE\u63A5', desc: savedCustomUrl || '\u8F93\u5165\u4EFB\u610F\u7F51\u5740' }
     ];
     var html = '';
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
       var active = (it.key === savedStyle) ? ' active' : '';
-      html += '<div class="f-home-style-item' + active + '" data-fstyle="' + it.key + '" onclick="__berryHandleStyleClick(\'' + it.key + '\')">' +
+      html += '<div class="f-home-style-item' + active + '" data-fstyle="' + it.key + '">' +
         '<div class="f-hs-icon">' + it.icon + '</div>' +
         '<div class="f-hs-info"><div class="f-hs-name">' + it.name + '</div><div class="f-hs-desc">' + it.desc + '</div></div>' +
         '<div class="f-hs-check">\u2713</div></div>';
@@ -672,13 +685,13 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     var customInputVisible = (savedStyle === 'custom' && savedCustomUrl);
     var customInputHtml =
       '<div class="f-custom-url-section' + (customInputVisible ? ' visible' : '') + '" id="floatCustomUrlSection">' +
-      '<input type="url" id="floatCustomUrlInput" placeholder="https://example.com" value="' + (savedCustomUrl || '').replace(/"/g, '&quot;') + '">' +
-      '<button onclick="__berryHandleApply()">\u524D\u5F80</button></div>';
+      '<input type="url" id="floatCustomUrlInput" placeholder="https://www.limestart.cn" value="' + (savedCustomUrl || '').replace(/"/g, '&quot;') + '">' +
+      '<button id="floatApplyBtn">\u524D\u5F80</button></div>';
 
     return (
       '<div class="f-menu-overlay" id="shadowMenuOverlay">' +
       '<div class="f-menu-panel">' +
-      '<div class="f-menu-title">\u4E3B\u9875\u8BBE\u7F6E</div>' +
+      '<div class="f-menu-title">\u6781\u7B80\u4E3B\u9875</div>' +
       '<div class="f-mode-label"><span>\uD83C\uDFE0 \u4E3B\u9875\u98CE\u683C</span>' +
       '<div class="f-menu-tip" id="floatMenuTip"><span class="f-tip-icon">\u26A1</span><span class="f-tip-text"></span></div></div>' +
       '<div class="f-home-style-list">' + html + '</div>' +
