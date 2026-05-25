@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.1.4
+ * @version 2.1.5
  */
 (function () {
   'use strict';
@@ -680,7 +680,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       ':host-context(html.berry-dark) .menu-icon span,:host-context(html.dark) .menu-icon span{background-color:#aaa}',
       '.f-menu-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:200;align-items:flex-start;justify-content:flex-start;overflow-y:auto;overflow-x:hidden}',
       '.f-menu-overlay.open{display:flex!important}',
-      '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92)}',
+      '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92);pointer-events:auto}',
       '.f-menu-title{font-size:15px;font-weight:600;color:#222;margin-top:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.06)}',
       '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap}',
       '.f-home-style-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}',
@@ -753,11 +753,11 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       customInputHtml +
       '<div class="f-switch-method-label">🔄 显示方式<span class="switch-method-hint">（菜单按钮显示时机，默认左上角区域）</span></div>' +
       '<div class="f-switch-method-list">' +
-      '<div class="f-switch-method-item' + (savedMethod === 'always' ? ' active' : '') + '" data-fm="always" onclick="__berryHandleSwitchMethod(\'always\')"><span>📌</span><span>常驻</span></div>' +
-      '<div class="f-switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-fm="longpress" onclick="__berryHandleSwitchMethod(\'longpress\')"><span>⬅️</span><span>长按</span></div>' +
-      '<div class="f-switch-method-item' + (savedMethod === 'dblclick' ? ' active' : '') + '" data-fm="dblclick" onclick="__berryHandleSwitchMethod(\'dblclick\')"><span>👆</span><span>双击</span></div>' +
+      '<div class="f-switch-method-item' + (savedMethod === 'always' ? ' active' : '') + '" data-fm="always"><span>📌</span><span>常驻</span></div>' +
+      '<div class="f-switch-method-item' + (savedMethod === 'longpress' ? ' active' : '') + '" data-fm="longpress"><span>⬅️</span><span>长按</span></div>' +
+      '<div class="f-switch-method-item' + (savedMethod === 'dblclick' ? ' active' : '') + '" data-fm="dblclick"><span>👆</span><span>双击</span></div>' +
       '</div>' +
-      '<div class="f-close-menu" onclick="__berryCloseMenu()">\u2715 \u5173\u95ED</div>' +
+      '<div class="f-close-menu">\u2715 \u5173\u95ED</div>' +
       '</div></div>'
     );
   }
@@ -803,7 +803,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
   function initHomepageEnhance() {
     var menuApi = _page.BerryHomeMenu;
     if (menuApi) {
-      applySavedStyle(menuApi);\n      doEnhance(menuApi);  // 下次启动时加载保存的风格
+      applySavedStyle(menuApi);
+      doEnhance(menuApi);  // 下次启动时加载保存的风格
       return;
     }
 
@@ -813,7 +814,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       menuApi = _page.BerryHomeMenu;
       if (menuApi) {
         clearInterval(pollTimer);
-        applySavedStyle(menuApi);\n      doEnhance(menuApi);  // 下次启动时加载保存的风格
+        applySavedStyle(menuApi);
+        doEnhance(menuApi);  // 下次启动时加载保存的风格
       } else if (retries > 30) {
         clearInterval(pollTimer);
         console.warn('[berry-remote] BerryHomeMenu API 未就绪，回退悬浮菜单');
