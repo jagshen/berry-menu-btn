@@ -87,12 +87,13 @@
     return host.toLowerCase();
   }
 
-  /** 域名匹配：核心域名相同即认为匹配 */
+  /** 域名匹配：一方是另一方的域名后缀即认为匹配（支持子域名跳转） */
   function domainMatches(url1, url2) {
     var d1 = extractCoreDomain(url1);
     var d2 = extractCoreDomain(url2);
     if (!d1 || !d2) return false;
-    return d1 === d2;
+    if (d1 === d2) return true;
+    return d1.endsWith('.' + d2) || d2.endsWith('.' + d1);
   }
 
 
