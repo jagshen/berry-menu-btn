@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.1.7
+ * @version 2.1.8
  */
 (function () {
   'use strict';
@@ -74,11 +74,6 @@
     iframe.src = url;
   }
 
-  function removeIframe() {
-    var iframe = _doc.getElementById(IFRAME_ID);
-    if (iframe) iframe.remove();
-  }
-
   /* ========== 域名匹配 ========== */
 
   /** 提取核心域名：去掉协议、路径、www./m./mobile.前缀 */
@@ -121,7 +116,7 @@
     }
   }
 
-  function setupDisplayMethodFloat(shadow, isFlash) {
+  function setupDisplayMethodFloat(shadow, isFlash, onToggle) {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
     var zone = shadow.querySelector('#menuBtnWrap');
     var hotZone = shadow.querySelector('#__floatHotZone');
@@ -131,15 +126,17 @@
       if (zone) zone.style.display = '';
     } else {
       if (zone) zone.style.display = 'none';
-      createHotZone(zone, savedMethod, true, shadow, isFlash || false);
+      createHotZone(zone, savedMethod, true, shadow, isFlash || false, onToggle);
     }
   }
 
-  function createHotZone(targetBtn, method, isShadow, shadow, isFlash) {
+  function createHotZone(targetBtn, method, isShadow, shadow, isFlash, onToggle) {
     var hot = _doc.createElement('div');
     hot.id = isShadow ? '__floatHotZone' : '__hotZone';
-    var btnTop = (isShadow && !isHomePage()) ? '30px' : '45px';
-    hot.style.cssText = 'position:fixed;top:' + btnTop + ';left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:auto;';
+    var btnTopNum = (isShadow && !isHomePage()) ? 30 : 45;
+    var btnLeft = 16;
+    var btnSize = 28;
+    hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:auto;';
 
     /* 单击穿透：将事件重新派发到底层元素 */
     function redispatch(e) {
@@ -165,14 +162,10 @@
       // 常驻模式：点击菜单按钮区域打开菜单，其他区域穿透
       hot.addEventListener('click', function(e) {
         // 检查是否在菜单按钮范围内（按钮位置：top:30px/45px, left:16px, 大小：28x28）
-        var btnTop = (isShadow && !isHomePage()) ? '30px' : '45px';
-        var btnLeft = 16;
-        var btnSize = 28;
-        
         if (e.clientX >= btnLeft && e.clientX <= btnLeft + btnSize &&
-            e.clientY >= btnTop && e.clientY <= btnTop + btnSize) {
+            e.clientY >= btnTopNum && e.clientY <= btnTopNum + btnSize) {
           // 点击按钮区域，打开菜单
-          toggleMenu();
+          if (onToggle) onToggle();
         } else {
           // 点击其他区域，穿透到下层元素
           redispatch(e);
@@ -180,8 +173,9 @@
       });
     }
     function show() {
+      var btn;
       if (isShadow) {
-        var btn = shadow.querySelector('#menuBtnWrap');
+        btn = shadow.querySelector('#menuBtnWrap');
         if (btn) btn.style.display = '';
       } else {
         btn = _doc.getElementById('switchZone');
@@ -256,10 +250,6 @@
         '</div>';
       sectionEl = menuApi.addSection(html);
       if (!sectionEl) return;
-      if (extContainer) {
-        var sw = extContainer.querySelector('.switch-method-section');
-        if (sw) sw.parentNode.insertBefore(sectionEl, sw);
-      }
     }
 
     var input = sectionEl.querySelector('#scriptCustomUrlInput');
@@ -316,20 +306,20 @@
   }
 
 function bindSwitchMethodEvents(sectionEl, menuApi) {
-    var items = sectionEl.querySelectorAll('.switch-method-item');
-    for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        item.addEventListener('click', function() {
-            var method = this.getAttribute('data-method');
-            storageSet('berry_home_switch_method', method);
-            menuApi.hsSet('berry_home_switch_method', method);
-            var all = sectionEl.querySelectorAll('.switch-method-item');
-            for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
-            this.classList.add('active');
-            menuApi.showTip('设置成功，重启生效');
-            setupDisplayMethodHome(true);
-        });
-    }
+  var items = sectionEl.querySelectorAll('.switch-method-item');
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    item.addEventListener('click', function() {
+      var method = this.getAttribute('data-method');
+      storageSet('berry_home_switch_method', method);
+      menuApi.hsSet('berry_home_switch_method', method);
+      var all = sectionEl.querySelectorAll('.switch-method-item');
+      for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+      this.classList.add('active');
+      menuApi.showTip('设置成功，重启生效');
+      setupDisplayMethodHome(true);
+    });
+  }
 }
 
   function doEnhance(menuApi) {
@@ -395,8 +385,6 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       _doc.head.appendChild(tipStyle);
     }
 
-    var savedStyle = storageGet('berry_home_style', menuApi.hsGet('berry_home_style')) || 'default';
-
     // 为默认样式添加点击提示
     var defaultItem = _doc.getElementById('styleDefault');
     if (defaultItem) {
@@ -449,20 +437,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
 
     if (savedStyle === 'custom' && savedCustomUrl) _showCustomUrl(menuApi, savedCustomUrl);
 
-    // if (typeof menuApi.onStyleChange === 'function') {
-    //   menuApi.onStyleChange(function (newStyle) {
-    //     if (newStyle === 'default') removeIframe();
-    //   });
-    // }
-    // custom模式不通知原生，避免重复导航
-    if (savedStyle !== 'custom') {
-      menuApi.selectStyle(savedStyle);
-    }
-
     if (_DEBUG) console.log('[berry-remote] 原生菜单增强完成');
-
-    // 初始化显示方式
-    setupDisplayMethodHome();
   }
 
   /* ════════════════════════════════════════
@@ -599,7 +574,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       var t = shadow.querySelector('[data-fm="' + method + '"]');
       if (t) t.classList.add("active");
       showFloatTip('设置成功，重启生效');
-      setupDisplayMethodFloat(shadow, true);
+      setupDisplayMethodFloat(shadow, true, toggleMenu);
     };
 
     _page.__berryHandleApply = function () {
@@ -628,33 +603,35 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     if (_DEBUG) console.log('[berry-remote] 悬浮按钮已创建');
 
     // 初始化显示方式
-    setupDisplayMethodFloat(shadow);
+    setupDisplayMethodFloat(shadow, false, toggleMenu);
     // 添加主页风格事件委托
-    shadow.querySelector('#shadowMenuOverlay').addEventListener('click', function(e) {
-      var target = e.target.closest('.f-home-style-item');
-      if (target) {
-        var styleKey = target.getAttribute('data-fstyle');
-        if (styleKey && typeof _page.__berryHandleStyleClick === 'function') {
-          _page.__berryHandleStyleClick(styleKey);
+    if (overlay) {
+      overlay.addEventListener('click', function(e) {
+        var target = e.target.closest('.f-home-style-item');
+        if (target) {
+          var styleKey = target.getAttribute('data-fstyle');
+          if (styleKey && typeof _page.__berryHandleStyleClick === 'function') {
+            _page.__berryHandleStyleClick(styleKey);
+          }
         }
-      }
-      
-      // 添加显示方式事件委托
-      var switchTarget = e.target.closest('.f-switch-method-item');
-      if (switchTarget) {
-        var methodKey = switchTarget.getAttribute('data-fm');
-        if (methodKey && typeof _page.__berryHandleSwitchMethod === 'function') {
-          _page.__berryHandleSwitchMethod(methodKey);
+
+        // 添加显示方式事件委托
+        var switchTarget = e.target.closest('.f-switch-method-item');
+        if (switchTarget) {
+          var methodKey = switchTarget.getAttribute('data-fm');
+          if (methodKey && typeof _page.__berryHandleSwitchMethod === 'function') {
+            _page.__berryHandleSwitchMethod(methodKey);
+          }
         }
-      }
-      
-      // 添加关闭菜单事件委托
-      var closeTarget = e.target.closest('.f-close-menu');
-      if (closeTarget) {
-        closeMenu();
-      }
-    });
-    
+
+        // 添加关闭菜单事件委托
+        var closeTarget = e.target.closest('.f-close-menu');
+        if (closeTarget) {
+          closeMenu();
+        }
+      });
+    }
+
     // 添加自定义链接按钮事件
     var applyBtn = shadow.querySelector('#floatApplyBtn');
     if (applyBtn && typeof _page.__berryHandleApply === 'function') {
