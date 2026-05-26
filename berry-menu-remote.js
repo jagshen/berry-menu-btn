@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.2
+ * @version 2.2.3
  */
 (function () {
   'use strict';
@@ -237,12 +237,8 @@
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     storageSet('berry_home_custom_url', url);
     storageSet('berry_home_style', 'custom');
-    menuApi.hsSet('berry_home_custom_url', url);
-    menuApi.hsSet('berry_home_style', 'custom');
     menuApi.selectStyle('custom');
-    if (!navigator.onLine) { menuApi.showTip('无网络，重启后生效'); _hideCustomUrl(); return; }
-    menuApi.showTip('设置成功，重启生效');
-    navigateTo(url);
+    menuApi.showTip('已保存，重启后生效');
     _hideCustomUrl();
   }
 
@@ -332,7 +328,6 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     item.addEventListener('click', function() {
       var method = this.getAttribute('data-method');
       storageSet('berry_home_switch_method', method);
-      menuApi.hsSet('berry_home_switch_method', method);
       var all = sectionEl.querySelectorAll('.switch-method-item');
       for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
       this.classList.add('active');
@@ -416,7 +411,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       desc: '\u5361\u7247\u7EC4\u4EF6\uFF0C\u597D\u770B\u597D\u7528', active: savedStyle === 'itab',
       onClick: function () {
         _hideCustomUrl();
-        storageSet('berry_home_style', 'itab'); menuApi.hsSet('berry_home_style', 'itab');
+        storageSet('berry_home_style', 'itab');
         menuApi.selectStyle('itab');
         menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
       }
@@ -427,7 +422,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       desc: '\u4E30\u5BCC\u56FE\u6807\uFF0C\u4E2A\u6027\u5B9A\u5236', active: savedStyle === 'inftab',
       onClick: function () {
         _hideCustomUrl();
-        storageSet('berry_home_style', 'inftab'); menuApi.hsSet('berry_home_style', 'inftab');
+        storageSet('berry_home_style', 'inftab');
         menuApi.selectStyle('inftab');
         menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
       }
@@ -575,12 +570,12 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       storageSet('berry_home_custom_url', url);
       storageSet('berry_home_style', 'custom');
-      if (!navigator.onLine) { showFloatTip('无网络，重启后生效'); closeMenu(); return; }
-      showFloatTip('设置成功，重启生效');
-      navigateTo(url);
-      closeMenu();
+      // 先 cleanup，再跳转（navigateTo 可能同步修改 location）
       var isec = shadow.querySelector('#floatCustomUrlSection');
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
+      closeMenu();
+      if (!navigator.onLine) { showFloatTip('无网络，重启后生效'); return; }
+      navigateTo(url);
     };
 
     _page.__berryCloseMenu = function () { closeMenu(); };
