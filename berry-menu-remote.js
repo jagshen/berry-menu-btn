@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.0
+ * @version 2.2.1
  */
 (function () {
   'use strict';
@@ -327,11 +327,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
   function doEnhance(menuApi) {
     if (_DEBUG) console.log('[berry-remote] 开始增强原生菜单');
     
-    // 确保原生API初始化后立即切换到保存的风格，避免闪烁
     var savedStyle = storageGet('berry_home_style', menuApi.hsGet('berry_home_style')) || 'default';
-    if (savedStyle !== 'custom') {
-      menuApi.selectStyle(savedStyle);
-    }
     
     menuApi.removePlaceholder();
 
@@ -436,6 +432,11 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       '</div></div>';
     var switchSectionEl = menuApi.addSection(switchSectionHTML);
     if (switchSectionEl) bindSwitchMethodEvents(switchSectionEl, menuApi);
+
+    // 所有 item 创建完毕后再 selectStyle，确保 applyStyleUI 能找到所有 DOM
+    if (savedStyle !== 'custom') {
+      menuApi.selectStyle(savedStyle);
+    }
 
     if (savedStyle === 'custom' && savedCustomUrl) _showCustomUrl(menuApi, savedCustomUrl);
 
