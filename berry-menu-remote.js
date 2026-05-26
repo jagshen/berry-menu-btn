@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.1.8
+ * @version 2.1.9
  */
 (function () {
   'use strict';
@@ -750,21 +750,28 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
      下次启动时加载保存的主页风格
      ════════════════════════════════════════ */
 
+  var STYLE_IFRAME_URLS = {
+    itab: 'https://go.itab.link/',
+    inftab: 'https://inftab.com/'
+  };
+
   function applySavedStyle(menuApi) {
     var savedStyle = storageGet('berry_home_style') || 'default';
-    var savedCustomUrl = storageGet('berry_home_custom_url') || '';
 
-    // 先告诉原生API应该使用哪个风格，避免初始化时闪烁
+    // 告诉原生API应该使用哪个风格，避免初始化时闪烁
     if (menuApi && savedStyle !== 'custom') {
       menuApi.selectStyle(savedStyle);
     }
 
-    if (savedStyle === 'itab') {
-      loadInIframe('https://go.itab.link/');
-    } else if (savedStyle === 'inftab') {
-      loadInIframe('https://inftab.com/');
-    } else if (savedStyle === 'custom' && savedCustomUrl) {
-      navigateTo(savedCustomUrl);
+    // 把各风格的 iframe URL 写入 storage，供 极简主页.html 内联脚本下次启动时直接读取
+    for (var k in STYLE_IFRAME_URLS) {
+      storageSet('berry_home_iframe_url_' + k, STYLE_IFRAME_URLS[k]);
+    }
+
+    // custom 模式由 极简主页.html 内联脚本在页面加载时同步处理跳转，此处不重复执行
+    var iframeUrl = STYLE_IFRAME_URLS[savedStyle];
+    if (iframeUrl) {
+      loadInIframe(iframeUrl);
     }
   }
 
