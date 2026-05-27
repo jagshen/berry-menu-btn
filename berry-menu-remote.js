@@ -112,9 +112,7 @@
     var d2 = extractCoreDomain(url2);
     if (!d1 || !d2) return false;
     if (d1 === d2) return true;
-    // 用 indexOf 替代 endsWith，兼容旧版 ArkWeb/WebView
-    return (d1.indexOf('.' + d2) === d1.length - d2.length - 1) ||
-           (d2.indexOf('.' + d1) === d2.length - d1.length - 1);
+    return d1.endsWith('.' + d2) || d2.endsWith('.' + d1);
   }
 
 
@@ -882,7 +880,7 @@
     if (isHome) {
       initHomepageEnhance();
     } else {
-      storageSet('berry_userscript_installed', '1');
+      try { storageSet('berry_userscript_installed', '1'); } catch(e) {}
       initFloatingMenu();
     }
   }
