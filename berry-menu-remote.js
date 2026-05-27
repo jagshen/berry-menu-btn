@@ -15,6 +15,9 @@
   if (_page.__berryMenuRemoteLoaded) return;
   _page.__berryMenuRemoteLoaded = true;
 
+  _page.BerryMenuRemote = _page.BerryMenuRemote || {};
+  var BerryMenuRemote = _page.BerryMenuRemote;
+
   /* ========== 从userscript 桥接获取 API ========== */
   var bridge = _page.__berryMenu || {};
   var config = bridge.config || {};
@@ -51,6 +54,17 @@
     try { location.href = url; } catch (e) { window.open(url, '_blank'); }
   }
 
+  function checkNetworkAlive() {
+    return new Promise(function(resolve) {
+      if (!navigator.onLine) return resolve(false);
+      var img = new Image();
+      img.onload = function() { resolve(true); };
+      img.onerror = function() { resolve(false); };
+      setTimeout(function() { resolve(false); }, 2000);
+      img.src = 'https://www.baidu.com/favicon.ico?_t=' + Date.now();
+    });
+  }
+
   /* ========== 页面上下文检测 ========== */
   function isHomePage() {
     if (config.isHome !== undefined) return config.isHome;
@@ -72,6 +86,11 @@
       (_doc.body || _doc.documentElement).appendChild(iframe);
     }
     iframe.src = url;
+  }
+
+  function removeIframe() {
+    var el = _doc.getElementById(IFRAME_ID);
+    if (el) el.remove();
   }
 
   /* ========== 域名匹配 ========== */
@@ -121,7 +140,7 @@
 
   function setupDisplayMethodFloat(shadow, isFlash, onToggle) {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
-    var zone = shadow.querySelector('#menuBtnWrap');
+    var zone = shadow ? shadow.querySelector('#menuBtnWrap') : null;
     var hotZone = _doc.getElementById('__floatHotZone'); // 热区挂在主文档，从主文档查
     // 移除旧热区
     if (hotZone) hotZone.remove();
@@ -136,7 +155,7 @@
   function createHotZone(targetBtn, method, isShadow, shadow, isFlash, onToggle) {
     var hot = _doc.createElement('div');
     hot.id = isShadow ? '__floatHotZone' : '__hotZone';
-    var btnTopNum = (isShadow && !isHomePage()) ? 30 : 45;
+    var btnTopNum = (isShadow && !isHomePage()) ? 15 : 45;
     var btnLeft = 16;
     var btnSize = 28;
     hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:auto;';
@@ -239,10 +258,15 @@
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     storageSet('berry_home_custom_url', url);
     storageSet('berry_home_style', 'custom');
-    menuApi.selectStyle('custom');
-    _hideCustomUrl();
-    if (!navigator.onLine) { menuApi.showTip('无网络，已保存'); return; }
-    navigateTo(url);
+    menuApi.hsSet && menuApi.hsSet('berry_home_custom_url', url);
+    menuApi.hsSet && menuApi.hsSet('berry_home_style', 'custom');
+    menuApi.selectStyle && menuApi.selectStyle('custom');
+    checkNetworkAlive().then(function(online) {
+      if (!online) { menuApi.showTip('无网络，重启后生效'); _hideCustomUrl(); return; }
+      menuApi.showTip('设置成功，重启生效');
+      navigateTo(url);
+      _hideCustomUrl();
+    });
   }
 
   function _showCustomUrl(menuApi, defaultValue) {
@@ -324,28 +348,28 @@
     _doc.head.appendChild(style);
   }
 
-function bindSwitchMethodEvents(sectionEl, menuApi) {
-  var items = sectionEl.querySelectorAll('.switch-method-item');
-  for (var i = 0; i < items.length; i++) {
-    var item = items[i];
-    item.addEventListener('click', function() {
-      var method = this.getAttribute('data-method');
-      storageSet('berry_home_switch_method', method);
-      var all = sectionEl.querySelectorAll('.switch-method-item');
-      for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
-      this.classList.add('active');
-      menuApi.showTip('设置成功');
-      setupDisplayMethodHome(true);
-    });
+  function bindSwitchMethodEvents(sectionEl, menuApi) {
+    var items = sectionEl.querySelectorAll('.switch-method-item');
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      item.addEventListener('click', function() {
+        var method = this.getAttribute('data-method');
+        storageSet('berry_home_switch_method', method);
+        var all = sectionEl.querySelectorAll('.switch-method-item');
+        for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+        this.classList.add('active');
+        menuApi.showTip('设置成功，重启生效');
+        setupDisplayMethodHome(true);
+      });
+    }
   }
-}
 
   function doEnhance(menuApi) {
     if (_DEBUG) console.log('[berry-remote] 开始增强原生菜单');
     
-    var savedStyle = storageGet('berry_home_style', menuApi.hsGet('berry_home_style')) || 'default';
-    
-    menuApi.removePlaceholder();
+    var savedStyle = storageGet('berry_home_style', menuApi.hsGet ? menuApi.hsGet('berry_home_style') : 'default') || 'default';
+
+    menuApi.removePlaceholder && menuApi.removePlaceholder();
 
     var modeLabel = _doc.querySelector('.mode-label');
     var menuTip = _doc.getElementById('menuTip');
@@ -403,19 +427,19 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     var defaultItem = _doc.getElementById('styleDefault');
     if (defaultItem) {
       defaultItem.addEventListener('click', function() {
-        menuApi.selectStyle('default');
+        menuApi.selectStyle && menuApi.selectStyle('default');
         menuApi.showTip('设置成功，重启生效');
       });
     }
-    var savedCustomUrl = storageGet('berry_home_custom_url', menuApi.hsGet('berry_home_custom_url')) || '';
+    var savedCustomUrl = storageGet('berry_home_custom_url', menuApi.hsGet ? menuApi.hsGet('berry_home_custom_url') : '') || '';
 
     menuApi.addItem({
       key: 'itab', icon: '\uD83D\uDD17', name: 'iTab\u65B0\u6807\u7B7E\u9875',
       desc: '\u5361\u7247\u7EC4\u4EF6\uFF0C\u597D\u770B\u597D\u7528', active: savedStyle === 'itab',
       onClick: function () {
         _hideCustomUrl();
-        storageSet('berry_home_style', 'itab');
-        menuApi.selectStyle('itab');
+        storageSet('berry_home_style', 'itab'); menuApi.hsSet && menuApi.hsSet('berry_home_style', 'itab');
+        menuApi.selectStyle && menuApi.selectStyle('itab');
         menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
       }
     });
@@ -425,8 +449,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       desc: '\u4E30\u5BCC\u56FE\u6807\uFF0C\u4E2A\u6027\u5B9A\u5236', active: savedStyle === 'inftab',
       onClick: function () {
         _hideCustomUrl();
-        storageSet('berry_home_style', 'inftab');
-        menuApi.selectStyle('inftab');
+        storageSet('berry_home_style', 'inftab'); menuApi.hsSet && menuApi.hsSet('berry_home_style', 'inftab');
+        menuApi.selectStyle && menuApi.selectStyle('inftab');
         menuApi.showTip('\u8BBE\u7F6E\u6210\u529F\uFF0C\u91CD\u542F\u751F\u6548');
       }
     });
@@ -435,8 +459,10 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u8BBF\u95EE\u94FE\u63A5',
       desc: savedCustomUrl || '\u8F93\u5165\u4EFB\u610F\u7F51\u5740', active: savedStyle === 'custom',
       onClick: function () { _showCustomUrl(menuApi, savedCustomUrl); }
-    });    // 显示方式：控制主页菜单按钮的显示时机
-    var savedMethod = storageGet('berry_home_switch_method', menuApi.hsGet('berry_home_switch_method')) || 'always';
+    });
+
+    // 显示方式：控制主页菜单按钮的显示时机
+    var savedMethod = storageGet('berry_home_switch_method', menuApi.hsGet ? menuApi.hsGet('berry_home_switch_method') : 'always') || 'always';
     injectSwitchMethodCSS();
     var switchSectionHTML =
       '<div class="switch-method-section">' +
@@ -557,7 +583,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       _floatTipTimer = setTimeout(function() { tipEl.classList.remove('show'); }, 2500);
     }
 
-    _page.__berryHandleSwitchMethod = function (method) {
+    BerryMenuRemote.__berryHandleSwitchMethod = function (method) {
       storageSet("berry_home_switch_method", method);
       var fmItems = shadow.querySelectorAll(".f-switch-method-item");
       for (var k = 0; k < fmItems.length; k++) fmItems[k].classList.remove("active");
@@ -567,7 +593,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       setupDisplayMethodFloat(shadow, true, toggleMenu);
     };
 
-    _page.__berryHandleApply = function () {
+    BerryMenuRemote.__berryHandleApply = function () {
       var fui = shadow.querySelector('#floatCustomUrlInput');
       if (!fui) return;
       var url = fui.value.trim();
@@ -575,16 +601,17 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       storageSet('berry_home_custom_url', url);
       storageSet('berry_home_style', 'custom');
-      // 先 cleanup，再跳转
+      // 先 cleanup，再跳转（navigateTo 可能同步修改 location）
       var isec = shadow.querySelector('#floatCustomUrlSection');
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
       closeMenu();
-      if (!navigator.onLine) { showFloatTip('无网络，已保存，重启后生效'); return; }
-      // 非主页场景用普通跳转，避免 berry:// 协议触发第三方页面卸载时的 Script Error
-      try { location.href = url; } catch (e) {}
+      checkNetworkAlive().then(function(online) {
+        if (!online) { showFloatTip('无网络，重启后生效'); return; }
+        navigateTo(url);
+      });
     };
 
-    _page.__berryCloseMenu = function () { closeMenu(); };
+    BerryMenuRemote.__berryCloseMenu = function () { closeMenu(); };
 
     /* 暴露全局接口 */
     try { _page.globalMenuBtn = btn; } catch (e) {}
@@ -651,8 +678,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
         var switchTarget = closest(target, 'f-switch-method-item');
         if (switchTarget) {
           var methodKey = switchTarget.getAttribute('data-fm');
-          if (methodKey && typeof _page.__berryHandleSwitchMethod === 'function') {
-            _page.__berryHandleSwitchMethod(methodKey);
+          if (methodKey && typeof BerryMenuRemote.__berryHandleSwitchMethod === 'function') {
+            BerryMenuRemote.__berryHandleSwitchMethod(methodKey);
           }
           return;
         }
@@ -666,10 +693,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
 
     // 自定义链接前往按钮
     var applyBtn = shadow.querySelector('#floatApplyBtn');
-    if (applyBtn) {
-      applyBtn.addEventListener('click', function() {
-        if (typeof _page.__berryHandleApply === 'function') _page.__berryHandleApply();
-      });
+    if (applyBtn && BerryMenuRemote.__berryHandleApply) {
+      applyBtn.addEventListener('click', BerryMenuRemote.__berryHandleApply);
     }
   }
 
@@ -791,21 +816,25 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
   function applySavedStyle(menuApi) {
     var savedStyle = storageGet('berry_home_style') || 'default';
 
-    // 告诉原生API应该使用哪个风格，避免初始化时闪烁
-    if (menuApi && savedStyle !== 'custom') {
-      menuApi.selectStyle(savedStyle);
-    }
-
     // 把各风格的 iframe URL 写入 storage，供 极简主页.html 内联脚本下次启动时直接读取
     for (var k in STYLE_IFRAME_URLS) {
       storageSet('berry_home_iframe_url_' + k, STYLE_IFRAME_URLS[k]);
     }
 
-    // custom 模式由 极简主页.html 内联脚本在页面加载时同步处理跳转，此处不重复执行
-    var iframeUrl = STYLE_IFRAME_URLS[savedStyle];
-    if (iframeUrl && navigator.onLine) {
-      loadInIframe(iframeUrl);
+    // default 风格：移除可能残留的 iframe
+    if (savedStyle === 'default') {
+      removeIframe();
+      return Promise.resolve(false);
     }
+
+    var iframeUrl = STYLE_IFRAME_URLS[savedStyle];
+    if (iframeUrl) {
+      return checkNetworkAlive().then(function(online) {
+        if (online) loadInIframe(iframeUrl);
+        return !online; // true = 断网跳过
+      });
+    }
+    return Promise.resolve(false);
   }
 
   /* ════════════════════════════════════════
@@ -825,12 +854,15 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
 
   /* ========== 等待 BerryHomeMenu API ========== */
   function initHomepageEnhance() {
-    var menuApi = _page.BerryHomeMenu;
-    if (menuApi) {
-      applySavedStyle(menuApi);
-      doEnhance(menuApi);  // 下次启动时加载保存的风格
-      return;
+    function run(menuApi) {
+      applySavedStyle(menuApi).then(function(offline) {
+        doEnhance(menuApi);
+        if (offline) menuApi.showTip('网络断开，请检查网络');
+      });
     }
+
+    var menuApi = _page.BerryHomeMenu;
+    if (menuApi) { run(menuApi); return; }
 
     var retries = 0;
     var pollTimer = setInterval(function () {
@@ -838,11 +870,10 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       menuApi = _page.BerryHomeMenu;
       if (menuApi) {
         clearInterval(pollTimer);
-        applySavedStyle(menuApi);
-        doEnhance(menuApi);  // 下次启动时加载保存的风格
+        run(menuApi);
       } else if (retries > 30) {
         clearInterval(pollTimer);
-        console.warn('[berry-remote] BerryHomeMenu API 未就绪，放弃增强'); // 不再创建悬浮按钮
+        console.warn('[berry-remote] BerryHomeMenu API 未就绪，放弃增强');
       }
     }, 100);
   }
