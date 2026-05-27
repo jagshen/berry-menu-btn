@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.5
+ * @version 2.2.6
  */
 (function () {
   'use strict';
@@ -105,12 +105,12 @@
   function setupDisplayMethodHome(isFlash) {
     var savedMethod = storageGet('berry_home_switch_method') || 'always';
     var zone = _doc.getElementById('switchZone')
-        || _doc.getElementById('menuBtnWrap')
-        || _doc.body;
-    if (!zone) return;
+        || _doc.getElementById('menuBtnWrap');
     // 移除旧的热区
     var oldHot = _doc.getElementById('__hotZone');
     if (oldHot) oldHot.remove();
+    // zone 找不到时，无论何种模式都不做任何隐藏操作，直接返回
+    if (!zone) return;
     if (savedMethod === 'always') {
       zone.style.display = '';
     } else {
@@ -819,25 +819,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     if (isHome) {
       initHomepageEnhance();
     } else {
-      // 非主页：等 BerryBrowser 就绪后再初始化，确保 storageGet 能读到值
-      var hasBerry = (typeof _page.BerryBrowser !== 'undefined' && _page.BerryBrowser.homeStorageGet);
-      if (hasBerry) {
-        try { initFloatingMenu(); } catch (e) {
-          if (_DEBUG) console.warn('[berry-remote] initFloatingMenu error:', e);
-        }
-      } else {
-        var retries = 0;
-        var timer = setInterval(function () {
-          retries++;
-          var ready = (typeof _page.BerryBrowser !== 'undefined' && _page.BerryBrowser.homeStorageGet);
-          if (ready || retries >= 20) {
-            clearInterval(timer);
-            try { initFloatingMenu(); } catch (e) {
-              if (_DEBUG) console.warn('[berry-remote] initFloatingMenu error:', e);
-            }
-          }
-        }, 200);
-      }
+      initFloatingMenu();
     }
   }
 
