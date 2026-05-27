@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.4
+ * @version 2.2.5
  */
 (function () {
   'use strict';
@@ -819,8 +819,24 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     if (isHome) {
       initHomepageEnhance();
     } else {
-      try { initFloatingMenu(); } catch (e) {
-        if (_DEBUG) console.warn('[berry-remote] initFloatingMenu error:', e);
+      // 非主页：等 BerryBrowser 就绪后再初始化，确保 storageGet 能读到值
+      var hasBerry = (typeof _page.BerryBrowser !== 'undefined' && _page.BerryBrowser.homeStorageGet);
+      if (hasBerry) {
+        try { initFloatingMenu(); } catch (e) {
+          if (_DEBUG) console.warn('[berry-remote] initFloatingMenu error:', e);
+        }
+      } else {
+        var retries = 0;
+        var timer = setInterval(function () {
+          retries++;
+          var ready = (typeof _page.BerryBrowser !== 'undefined' && _page.BerryBrowser.homeStorageGet);
+          if (ready || retries >= 20) {
+            clearInterval(timer);
+            try { initFloatingMenu(); } catch (e) {
+              if (_DEBUG) console.warn('[berry-remote] initFloatingMenu error:', e);
+            }
+          }
+        }, 200);
       }
     }
   }
