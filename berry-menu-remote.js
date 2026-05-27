@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.3
+ * @version 2.2.4
  */
 (function () {
   'use strict';
@@ -93,7 +93,9 @@
     var d2 = extractCoreDomain(url2);
     if (!d1 || !d2) return false;
     if (d1 === d2) return true;
-    return d1.endsWith('.' + d2) || d2.endsWith('.' + d1);
+    // 用 indexOf 替代 endsWith，兼容旧版 ArkWeb/WebView
+    return (d1.indexOf('.' + d2) === d1.length - d2.length - 1) ||
+           (d2.indexOf('.' + d1) === d2.length - d1.length - 1);
   }
 
 
@@ -238,8 +240,9 @@
     storageSet('berry_home_custom_url', url);
     storageSet('berry_home_style', 'custom');
     menuApi.selectStyle('custom');
-    menuApi.showTip('已保存，重启后生效');
     _hideCustomUrl();
+    if (!navigator.onLine) { menuApi.showTip('无网络，已保存'); return; }
+    navigateTo(url);
   }
 
   function _showCustomUrl(menuApi, defaultValue) {
@@ -542,6 +545,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       });
     }
 
+    var _floatTipTimer = null;
     function showFloatTip(msg) {
       var tipEl = shadow.querySelector('#floatMenuTip');
       if (!tipEl) return;
@@ -549,7 +553,8 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       if (!textEl) return;
       textEl.textContent = msg;
       tipEl.classList.add('show');
-      setTimeout(function() { tipEl.classList.remove('show'); }, 2500);
+      clearTimeout(_floatTipTimer);
+      _floatTipTimer = setTimeout(function() { tipEl.classList.remove('show'); }, 2500);
     }
 
     _page.__berryHandleSwitchMethod = function (method) {
@@ -570,12 +575,13 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
       if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
       storageSet('berry_home_custom_url', url);
       storageSet('berry_home_style', 'custom');
-      // 先 cleanup，再跳转（navigateTo 可能同步修改 location）
+      // 先 cleanup，再跳转
       var isec = shadow.querySelector('#floatCustomUrlSection');
       if (isec) { isec.style.display = 'none'; isec.classList.remove('visible'); }
       closeMenu();
-      if (!navigator.onLine) { showFloatTip('无网络，重启后生效'); return; }
-      navigateTo(url);
+      if (!navigator.onLine) { showFloatTip('无网络，已保存，重启后生效'); return; }
+      // 非主页场景用普通跳转，避免 berry:// 协议触发第三方页面卸载时的 Script Error
+      try { location.href = url; } catch (e) {}
     };
 
     _page.__berryCloseMenu = function () { closeMenu(); };
@@ -594,17 +600,33 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     // 统一事件委托（合并两个 overlay click 监听为一个）
     if (overlay) {
       overlay.addEventListener('click', function(e) {
+        var target = e.target;
+        if (!target) return;
+
+        // 兼容不支持 closest 的旧版引擎
+        function closest(el, cls) {
+          while (el && el !== overlay) {
+            if (el.classList && el.classList.contains(cls)) return el;
+            el = el.parentNode;
+          }
+          return null;
+        }
+
         // 点遮罩背景关闭
-        if (e.target === overlay) { closeMenu(); return; }
+        if (target === overlay) { closeMenu(); return; }
 
         // 风格选择
-        var styleTarget = e.target.closest('.f-home-style-item');
+        var styleTarget = closest(target, 'f-home-style-item');
         if (styleTarget) {
           var styleKey = styleTarget.getAttribute('data-fstyle');
           if (styleKey === 'custom') {
             var inputSec = shadow.querySelector('#floatCustomUrlSection');
             if (inputSec) {
               if (!inputSec.classList.contains('visible')) {
+                // 展开输入框，同时高亮 custom
+                var allItems = shadow.querySelectorAll('.f-home-style-item');
+                for (var j = 0; j < allItems.length; j++) allItems[j].classList.remove('active');
+                styleTarget.classList.add('active');
                 inputSec.style.display = 'flex';
                 inputSec.classList.add('visible');
               } else {
@@ -626,7 +648,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
         }
 
         // 显示方式
-        var switchTarget = e.target.closest('.f-switch-method-item');
+        var switchTarget = closest(target, 'f-switch-method-item');
         if (switchTarget) {
           var methodKey = switchTarget.getAttribute('data-fm');
           if (methodKey && typeof _page.__berryHandleSwitchMethod === 'function') {
@@ -636,7 +658,7 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
         }
 
         // 关闭按钮
-        if (e.target.closest('.f-close-menu')) {
+        if (closest(target, 'f-close-menu')) {
           closeMenu();
         }
       });
@@ -797,7 +819,9 @@ function bindSwitchMethodEvents(sectionEl, menuApi) {
     if (isHome) {
       initHomepageEnhance();
     } else {
-      initFloatingMenu();
+      try { initFloatingMenu(); } catch (e) {
+        if (_DEBUG) console.warn('[berry-remote] initFloatingMenu error:', e);
+      }
     }
   }
 
