@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.6
+ * @version 2.2.7
  */
 (function () {
   'use strict';
@@ -258,6 +258,7 @@
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
     storageSet('berry_home_custom_url', url);
     storageSet('berry_home_style', 'custom');
+    storageSet('berry_home_custom_visited', '1');
     menuApi.hsSet && menuApi.hsSet('berry_home_custom_url', url);
     menuApi.hsSet && menuApi.hsSet('berry_home_style', 'custom');
     menuApi.selectStyle && menuApi.selectStyle('custom');
@@ -456,7 +457,7 @@
     });
 
     menuApi.addItem({
-      key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u8BBF\u95EE\u94FE\u63A5',
+      key: 'custom', icon: '\uD83C\uDF10', name: '\u81EA\u5B9A\u4E49\u94FE\u63A5',
       desc: savedCustomUrl || '\u8F93\u5165\u4EFB\u610F\u7F51\u5740', active: savedStyle === 'custom',
       onClick: function () { _showCustomUrl(menuApi, savedCustomUrl); }
     });
@@ -484,6 +485,29 @@
 
     // 根据保存的显示方式初始化菜单按钮状态
     setupDisplayMethodHome(false);
+
+    // 检测是否需要提示安装 userscript
+    var customVisited = storageGet('berry_home_custom_visited');
+    var userscriptInstalled = storageGet('berry_userscript_installed');
+    if (customVisited === '1' && !userscriptInstalled) {
+      var customItem = _doc.querySelector('.home-style-item[data-style="custom"]');
+      if (customItem && customItem.parentNode) {
+        var hintItem = _doc.createElement('div');
+        hintItem.className = 'home-style-item';
+        hintItem.id = '_berryScriptHint';
+        hintItem.style.cssText = 'opacity:0.75;cursor:pointer;';
+        hintItem.innerHTML =
+          '<div class="hs-icon">\u2795</div>' +
+          '<div class="hs-info">' +
+            '<div class="hs-name">\u652F\u6301\u81EA\u5B9A\u4E49\u9875\u9762</div>' +
+            '<div class="hs-desc">\u9700\u8981\u5B89\u88C5\u811A\u672C\u652F\u6301</div>' +
+          '</div>';
+        hintItem.addEventListener('click', function() {
+          navigateTo('https://example.com/install-userscript'); // 预留安装链接
+        });
+        customItem.parentNode.insertBefore(hintItem, customItem.nextSibling);
+      }
+    }
 
     if (_DEBUG) console.log('[berry-remote] 原生菜单增强完成');
   }
@@ -827,6 +851,16 @@
       return Promise.resolve(false);
     }
 
+    // custom 风格：未安装 userscript 时停留官方默认，不跳转
+    if (savedStyle === 'custom') {
+      var userscriptInstalled = storageGet('berry_userscript_installed');
+      if (!userscriptInstalled) {
+        removeIframe();
+        return Promise.resolve(false);
+      }
+      return Promise.resolve(false);
+    }
+
     var iframeUrl = STYLE_IFRAME_URLS[savedStyle];
     if (iframeUrl) {
       return checkNetworkAlive().then(function(online) {
@@ -848,6 +882,7 @@
     if (isHome) {
       initHomepageEnhance();
     } else {
+      storageSet('berry_userscript_installed', '1');
       initFloatingMenu();
     }
   }
