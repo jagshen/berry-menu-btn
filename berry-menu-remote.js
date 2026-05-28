@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.7
+ * @version 2.2.8
  */
 (function () {
   'use strict';
@@ -111,8 +111,9 @@
     var d1 = extractCoreDomain(url1);
     var d2 = extractCoreDomain(url2);
     if (!d1 || !d2) return false;
+    if (d2.indexOf('.') === -1) return false;
     if (d1 === d2) return true;
-    return d1.endsWith('.' + d2) || d2.endsWith('.' + d1);
+    return d1.endsWith('.' + d2);
   }
 
 
@@ -501,18 +502,8 @@
     /* 判断是否显示按钮 */
     var showBtn = false;
 
-    if (savedStyle === 'default') {
-      showBtn = false;
-    } else if (savedStyle === 'itab') {
-      showBtn = (currentUrl.indexOf('go.itab.link') !== -1 || currentUrl.indexOf('itab.com') !== -1);
-    } else if (savedStyle === 'inftab') {
-      showBtn = (currentUrl.indexOf('inftab.com') !== -1);
-    } else if (savedStyle === 'custom') {
-      if (customUrl) {
-        showBtn = domainMatches(currentUrl, customUrl);
-      } else {
-        showBtn = true;
-      }
+    if (savedStyle === 'custom' && customUrl) {
+      showBtn = domainMatches(currentUrl, customUrl);
     }
 
     if (_DEBUG) console.log('[berry-remote] showBtn=' + showBtn + ' coreDomain(current)=' + extractCoreDomain(currentUrl) + ' coreDomain(saved)=' + extractCoreDomain(customUrl));
@@ -702,7 +693,7 @@
     var btnTop = isHome ? '45px' : '15px';
     var panelTop = isHome ? '77px' : '47px';
     var btnLeft = '16px';
-    var panelMargin = (panelTop + ' 16px 20px 16px');
+    var panelMargin = (panelTop + ' 20px 20px 16px');
     return [
       ':host{display:block!important;overflow:visible!important}',
       '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:' + btnLeft + '!important;z-index:999999;pointer-events:auto}',
@@ -715,7 +706,7 @@
       ':host-context(html.berry-dark) .menu-icon span,:host-context(html.dark) .menu-icon span{background-color:#aaa}',
       '.f-menu-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:200;align-items:flex-start;justify-content:flex-start;overflow-y:auto;overflow-x:hidden}',
       '.f-menu-overlay.open{display:flex!important}',
-      '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92);pointer-events:auto}',
+      '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 40px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92);pointer-events:auto}',
       '.f-menu-title{font-size:15px;font-weight:600;color:#222;margin-top:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.06)}',
       '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap}',
       '.f-home-style-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}',
