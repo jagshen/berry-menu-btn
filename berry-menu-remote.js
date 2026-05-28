@@ -159,64 +159,39 @@
     var btnSize = 28;
     hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:none;';
 
+    /* 判断触点是否在热区内 */
+    function inHotZone(x, y) {
+      return x >= 0 && x <= 120 && y >= btnTopNum && y <= btnTopNum + 120;
+    }
+
     if (method === 'longpress') {
       var timer = null, triggered = false;
-      hot.addEventListener('mousedown', function() {
-        hot.style.pointerEvents = 'auto';
-        clearTimeout(timer); triggered = false;
-        timer = setTimeout(function() { triggered = true; show(); }, 500);
-      });
-      hot.addEventListener('touchstart', function(e) {
-        hot.style.pointerEvents = 'auto';
+      _doc.addEventListener('touchstart', function(e) {
+        var t = e.touches[0];
+        if (!t || !inHotZone(t.clientX, t.clientY)) return;
         clearTimeout(timer); triggered = false;
         timer = setTimeout(function() { triggered = true; show(); }, 500);
       }, { passive: true });
-      hot.addEventListener('mouseup', function() {
+      _doc.addEventListener('touchend', function(e) {
         clearTimeout(timer);
-        hot.style.pointerEvents = 'none';
-      });
-      hot.addEventListener('touchend', function() {
+      }, { passive: true });
+      _doc.addEventListener('touchmove', function(e) {
         clearTimeout(timer);
-        hot.style.pointerEvents = 'none';
-      });
-      hot.addEventListener('mouseleave', function() {
-        clearTimeout(timer);
-        hot.style.pointerEvents = 'none';
-      });
+      }, { passive: true });
     } else if (method === 'dblclick') {
       var dblTimer = null;
-      hot.addEventListener('touchstart', function() {
-        hot.style.pointerEvents = 'auto';
+      _doc.addEventListener('touchend', function(e) {
+        var t = e.changedTouches && e.changedTouches[0];
+        if (!t || !inHotZone(t.clientX, t.clientY)) return;
+        if (dblTimer) {
+          clearTimeout(dblTimer); dblTimer = null;
+          show();
+        } else {
+          dblTimer = setTimeout(function() { dblTimer = null; }, 250);
+        }
       }, { passive: true });
-      hot.addEventListener('touchend', function() {
-        if (dblTimer) {
-          clearTimeout(dblTimer); dblTimer = null;
-          hot.style.pointerEvents = 'none';
-          show();
-        } else {
-          dblTimer = setTimeout(function() {
-            dblTimer = null;
-            hot.style.pointerEvents = 'none';
-          }, 250);
-        }
-      });
-      hot.addEventListener('mousedown', function() {
-        hot.style.pointerEvents = 'auto';
-      });
-      hot.addEventListener('click', function() {
-        if (dblTimer) {
-          clearTimeout(dblTimer); dblTimer = null;
-          hot.style.pointerEvents = 'none';
-          show();
-        } else {
-          dblTimer = setTimeout(function() {
-            dblTimer = null;
-            hot.style.pointerEvents = 'none';
-          }, 250);
-        }
-      });
     } else {
-      // 常驻模式：热区默认穿透，onToggle 由外部直接绑定到按钮上
+      // 常驻模式：热区完全穿透，不需要手势检测
     }
     function show() {
       var btn;
