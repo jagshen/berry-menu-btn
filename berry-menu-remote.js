@@ -2,7 +2,7 @@
  * Berry Menu Remote
  * 依赖 userscript 注入全局对象
  * 包含：主页增强+ 悬浮按钮 + 域名匹配
- * @version 2.2.8
+ * @version 2.2.7
  */
 (function () {
   'use strict';
@@ -111,9 +111,8 @@
     var d1 = extractCoreDomain(url1);
     var d2 = extractCoreDomain(url2);
     if (!d1 || !d2) return false;
-    if (d2.indexOf('.') === -1) return false;
     if (d1 === d2) return true;
-    return d1.endsWith('.' + d2);
+    return d1.endsWith('.' + d2) || d2.endsWith('.' + d1);
   }
 
 
@@ -159,41 +158,57 @@
     var btnSize = 28;
     hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:auto;';
 
+    /* 单击穿透：将事件重新派发到底层元素 */
+    function redispatch(e) {
+      hot.style.pointerEvents = 'none';
+      var target = _doc.elementFromPoint(e.clientX, e.clientY);
+      hot.style.pointerEvents = '';
+      if (target && target !== hot) {
+        target.dispatchEvent(new MouseEvent(e.type, { bubbles: true, clientX: e.clientX, clientY: e.clientY, button: e.button }));
+      }
+    }
+
     if (method === 'longpress') {
       var timer = null, triggered = false;
-      hot.addEventListener('touchstart', function(e) {
-        triggered = false;
-        timer = setTimeout(function() { triggered = true; show(); }, 500);
-      }, { passive: true });
-      hot.addEventListener('touchend', function() {
+      hot.addEventListener('mousedown', function() { clearTimeout(timer); triggered = false; timer = setTimeout(function() { triggered = true; show(); }, 500); });
+      hot.addEventListener('touchstart', function(e) { clearTimeout(timer); triggered = false; timer = setTimeout(function() { triggered = true; show(); }, 500); }, { passive: true });
+      hot.addEventListener('mouseup', function(e) { clearTimeout(timer); if (!triggered) redispatch(e); });
+      hot.addEventListener('touchend', function(e) {
         clearTimeout(timer);
         if (!triggered) {
-          // 短触：临时穿透让底层响应
-          hot.style.pointerEvents = 'none';
-          setTimeout(function() { hot.style.pointerEvents = 'auto'; }, 300);
+          var touch = e.changedTouches && e.changedTouches[0];
+          if (touch) {
+            hot.style.pointerEvents = 'none';
+            var target = _doc.elementFromPoint(touch.clientX, touch.clientY);
+            hot.style.pointerEvents = '';
+            if (target && target !== hot) {
+              target.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: touch.clientX, clientY: touch.clientY }));
+            }
+          }
         }
-      }, { passive: true });
-      hot.addEventListener('touchmove', function() {
-        clearTimeout(timer);
-      }, { passive: true });
+      });
+      hot.addEventListener('mouseleave', function() { clearTimeout(timer); });
     } else if (method === 'dblclick') {
       var dblTimer = null;
-      hot.addEventListener('touchstart', function(e) {
-        if (dblTimer) {
-          clearTimeout(dblTimer); dblTimer = null;
-          show();
-        } else {
-          dblTimer = setTimeout(function() {
-            dblTimer = null;
-            // 单击超时：临时穿透让底层响应
-            hot.style.pointerEvents = 'none';
-            setTimeout(function() { hot.style.pointerEvents = 'auto'; }, 300);
-          }, 400);
-        }
-      }, { passive: true });
+      hot.addEventListener('click', function(e) {
+        if (dblTimer) { clearTimeout(dblTimer); dblTimer = null; return; }
+        var _e = e;
+        dblTimer = setTimeout(function() { dblTimer = null; redispatch(_e); }, 250);
+      });
+      hot.addEventListener('dblclick', show);
     } else {
-      // 常驻模式：热区完全穿透，不需要手势检测
-      hot.style.pointerEvents = 'none';
+      // 常驻模式：点击菜单按钮区域打开菜单，其他区域穿透
+      hot.addEventListener('click', function(e) {
+        // 检查是否在菜单按钮范围内（按钮位置：top:30px/45px, left:16px, 大小：28x28）
+        if (e.clientX >= btnLeft && e.clientX <= btnLeft + btnSize &&
+            e.clientY >= btnTopNum && e.clientY <= btnTopNum + btnSize) {
+          // 点击按钮区域，打开菜单
+          if (onToggle) onToggle();
+        } else {
+          // 点击其他区域，穿透到下层元素
+          redispatch(e);
+        }
+      });
     }
     function show() {
       var btn;
@@ -486,8 +501,18 @@
     /* 判断是否显示按钮 */
     var showBtn = false;
 
-    if (savedStyle === 'custom' && customUrl) {
-      showBtn = domainMatches(currentUrl, customUrl);
+    if (savedStyle === 'default') {
+      showBtn = false;
+    } else if (savedStyle === 'itab') {
+      showBtn = (currentUrl.indexOf('go.itab.link') !== -1 || currentUrl.indexOf('itab.com') !== -1);
+    } else if (savedStyle === 'inftab') {
+      showBtn = (currentUrl.indexOf('inftab.com') !== -1);
+    } else if (savedStyle === 'custom') {
+      if (customUrl) {
+        showBtn = domainMatches(currentUrl, customUrl);
+      } else {
+        showBtn = true;
+      }
     }
 
     if (_DEBUG) console.log('[berry-remote] showBtn=' + showBtn + ' coreDomain(current)=' + extractCoreDomain(currentUrl) + ' coreDomain(saved)=' + extractCoreDomain(customUrl));
@@ -677,7 +702,7 @@
     var btnTop = isHome ? '45px' : '15px';
     var panelTop = isHome ? '77px' : '47px';
     var btnLeft = '16px';
-    var panelMargin = (panelTop + ' 20px 20px 16px');
+    var panelMargin = (panelTop + ' 16px 20px 16px');
     return [
       ':host{display:block!important;overflow:visible!important}',
       '.btn-wrap{position:fixed;top:' + btnTop + '!important;left:' + btnLeft + '!important;z-index:999999;pointer-events:auto}',
@@ -690,7 +715,7 @@
       ':host-context(html.berry-dark) .menu-icon span,:host-context(html.dark) .menu-icon span{background-color:#aaa}',
       '.f-menu-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:200;align-items:flex-start;justify-content:flex-start;overflow-y:auto;overflow-x:hidden}',
       '.f-menu-overlay.open{display:flex!important}',
-      '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 40px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92);pointer-events:auto}',
+      '.f-menu-panel{position:relative;margin:' + panelMargin + ';width:300px;max-width:calc(100vw - 32px);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;padding:2px 12px;box-shadow:0 12px 32px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.92);pointer-events:auto}',
       '.f-menu-title{font-size:15px;font-weight:600;color:#222;margin-top:6px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,0,0,0.06)}',
       '.f-mode-label{font-size:12px;color:#8e8e93;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap}',
       '.f-home-style-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}',
