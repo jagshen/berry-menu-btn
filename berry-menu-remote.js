@@ -346,22 +346,22 @@
     _doc.head.appendChild(style);
   }
 
-function bindSwitchMethodEvents(sectionEl, menuApi) {
-  var items = sectionEl.querySelectorAll('.switch-method-item');
-  for (var i = 0; i < items.length; i++) {
-    var item = items[i];
-    item.addEventListener('click', function() {
-      var method = this.getAttribute('data-method');
-      storageSet('berry_home_switch_method', method);
-      menuApi.hsSet('berry_home_switch_method', method);
-      var all = sectionEl.querySelectorAll('.switch-method-item');
-      for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
-      this.classList.add('active');
-      menuApi.showTip('设置成功，重启生效');
-      setupDisplayMethodHome(true);
-    });
+  function bindSwitchMethodEvents(sectionEl, menuApi) {
+    var items = sectionEl.querySelectorAll('.switch-method-item');
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      item.addEventListener('click', function() {
+        var method = this.getAttribute('data-method');
+        storageSet('berry_home_switch_method', method);
+        menuApi.hsSet('berry_home_switch_method', method);
+        var all = sectionEl.querySelectorAll('.switch-method-item');
+        for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+        this.classList.add('active');
+        menuApi.showTip('设置成功，重启生效');
+        setupDisplayMethodHome(true);
+      });
+    }
   }
-}
 
   function doEnhance(menuApi) {
     if (_DEBUG) console.log('[berry-remote] 开始增强原生菜单');
