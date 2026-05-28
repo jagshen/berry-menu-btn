@@ -157,59 +157,66 @@
     var btnTopNum = (isShadow && !isHomePage()) ? 15 : 45;
     var btnLeft = 16;
     var btnSize = 28;
-    hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:auto;';
-
-    /* 单击穿透：将事件重新派发到底层元素 */
-    function redispatch(e) {
-      hot.style.pointerEvents = 'none';
-      var target = _doc.elementFromPoint(e.clientX, e.clientY);
-      hot.style.pointerEvents = '';
-      if (target && target !== hot) {
-        target.dispatchEvent(new MouseEvent(e.type, { bubbles: true, clientX: e.clientX, clientY: e.clientY, button: e.button }));
-      }
-    }
+    hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:none;';
 
     if (method === 'longpress') {
       var timer = null, triggered = false;
-      hot.addEventListener('mousedown', function() { clearTimeout(timer); triggered = false; timer = setTimeout(function() { triggered = true; show(); }, 500); });
-      hot.addEventListener('touchstart', function(e) { clearTimeout(timer); triggered = false; timer = setTimeout(function() { triggered = true; show(); }, 500); }, { passive: true });
-      hot.addEventListener('mouseup', function(e) { clearTimeout(timer); if (!triggered) redispatch(e); });
-      hot.addEventListener('touchend', function(e) {
-        clearTimeout(timer);
-        if (!triggered) {
-          var touch = e.changedTouches && e.changedTouches[0];
-          if (touch) {
-            hot.style.pointerEvents = 'none';
-            var target = _doc.elementFromPoint(touch.clientX, touch.clientY);
-            hot.style.pointerEvents = '';
-            if (target && target !== hot) {
-              target.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: touch.clientX, clientY: touch.clientY }));
-            }
-          }
-        }
+      hot.addEventListener('mousedown', function() {
+        hot.style.pointerEvents = 'auto';
+        clearTimeout(timer); triggered = false;
+        timer = setTimeout(function() { triggered = true; show(); }, 500);
       });
-      hot.addEventListener('mouseleave', function() { clearTimeout(timer); });
+      hot.addEventListener('touchstart', function(e) {
+        hot.style.pointerEvents = 'auto';
+        clearTimeout(timer); triggered = false;
+        timer = setTimeout(function() { triggered = true; show(); }, 500);
+      }, { passive: true });
+      hot.addEventListener('mouseup', function() {
+        clearTimeout(timer);
+        hot.style.pointerEvents = 'none';
+      });
+      hot.addEventListener('touchend', function() {
+        clearTimeout(timer);
+        hot.style.pointerEvents = 'none';
+      });
+      hot.addEventListener('mouseleave', function() {
+        clearTimeout(timer);
+        hot.style.pointerEvents = 'none';
+      });
     } else if (method === 'dblclick') {
       var dblTimer = null;
-      hot.addEventListener('click', function(e) {
-        if (dblTimer) { clearTimeout(dblTimer); dblTimer = null; return; }
-        var _e = e;
-        dblTimer = setTimeout(function() { dblTimer = null; redispatch(_e); }, 250);
-      });
-      hot.addEventListener('dblclick', show);
-    } else {
-      // 常驻模式：点击菜单按钮区域打开菜单，其他区域穿透
-      hot.addEventListener('click', function(e) {
-        // 检查是否在菜单按钮范围内（按钮位置：top:30px/45px, left:16px, 大小：28x28）
-        if (e.clientX >= btnLeft && e.clientX <= btnLeft + btnSize &&
-            e.clientY >= btnTopNum && e.clientY <= btnTopNum + btnSize) {
-          // 点击按钮区域，打开菜单
-          if (onToggle) onToggle();
+      hot.addEventListener('touchstart', function() {
+        hot.style.pointerEvents = 'auto';
+      }, { passive: true });
+      hot.addEventListener('touchend', function() {
+        if (dblTimer) {
+          clearTimeout(dblTimer); dblTimer = null;
+          hot.style.pointerEvents = 'none';
+          show();
         } else {
-          // 点击其他区域，穿透到下层元素
-          redispatch(e);
+          dblTimer = setTimeout(function() {
+            dblTimer = null;
+            hot.style.pointerEvents = 'none';
+          }, 250);
         }
       });
+      hot.addEventListener('mousedown', function() {
+        hot.style.pointerEvents = 'auto';
+      });
+      hot.addEventListener('click', function() {
+        if (dblTimer) {
+          clearTimeout(dblTimer); dblTimer = null;
+          hot.style.pointerEvents = 'none';
+          show();
+        } else {
+          dblTimer = setTimeout(function() {
+            dblTimer = null;
+            hot.style.pointerEvents = 'none';
+          }, 250);
+        }
+      });
+    } else {
+      // 常驻模式：热区默认穿透，onToggle 由外部直接绑定到按钮上
     }
     function show() {
       var btn;
