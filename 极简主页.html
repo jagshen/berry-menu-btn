@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <!-- 声明页面已原生支持深色模式，阻止 ArkWeb forceDarkAccess 对本页进行算法强制反色 -->
+  <meta name="color-scheme" content="light dark">
+  <title>极简主页</title>
+  <!-- berry-home-template-version:1.6.0
+  ══════════════════════════════════════════════════════════════
+  ★ ArkTS → HTML 注入接口（修改主页时请务必保留以下函数）★
+  ══════════════════════════════════════════════════════════════
+
+  1. setBookmarks(jsonStr)
+     类型：function(string)  // JSON.stringify(Array<{name, url, favicon, customIcon}>)
+     时机：主页加载完成后，HomeBookmarksScript 自动调用
+     作用：渲染书签图标列表（customIcon 填满卡片，favicon 缩小居中）
+
+  2. berry-dark class（HTML 根元素）
+     时机：用户开启深色模式时，HomeDarkModeScript 自动添加到 <html> 元素
+     作用：触发深色模式 CSS 变量（覆盖 prefers-color-scheme）
+
+  ══════════════════════════════════════════════════════════════
+  ★ HTML → ArkTS 通信协议（修改主页时请务必保留以下跳转）★
+  ══════════════════════════════════════════════════════════════
+
+  1. location.href = "berry://edit-bookmark?index=N"
+     触发：长按书签 500ms
+     作用：打开编辑书签弹窗
+
+  2. location.href = "berry://add-bookmark"
+     触发：点击「添加」按钮
+     作用：打开新增书签弹窗
+
+  ══════════════════════════════════════════════════════════════
+  ★ 主页持久化存储 API（无痕模式下 localStorage 不持久化，请使用此 API）★
+  ══════════════════════════════════════════════════════════════
+
+  BerryBrowser.homeStorageGet(key)         → string  同步读取，不存在返回空串
+  BerryBrowser.homeStorageSet(key, value)  → void    异步写入（内存立即生效，磁盘防抖合并）
+  BerryBrowser.homeStorageRemove(key)      → void    异步删除
+  BerryBrowser.homeStorageClear()          → void    异步清空全部
+  BerryBrowser.homeStorageGetAll()         → string  同步获取全部（JSON）
+
+  说明：数据持久化到原生 Preferences，正常模式和无痕模式行为一致。
+        适用于保存主页偏好设置、主题配色等需要跨会话保留的数据。
+        get/getAll 为同步调用，可直接赋值使用；set/remove/clear 为异步调用。
+        单条值最大 64KB，总条目数上限 500 条。
+
+  ══════════════════════════════════════════════════════════════
+  ★ 菜单扩展 API（外部脚本如 berry-menu-btn.js 可调用）★
+  ══════════════════════════════════════════════════════════════
+
+  window.BerryHomeMenu = {
+    addItem({key, icon, name, desc, onClick})  追加风格选项到菜单列表
+    removeItem(key)                            移除指定 key 的选项
+    addSection(html)                           在关闭按钮前插入自定义区域 HTML
+    removePlaceholder()                         移除"更多主页选择"占位提示
+    open() / close() / toggle()                控制菜单开关
+    onStyleChange(fn)                          注册风格切换回调
+  }
+
+  ══════════════════════════════════════════════════════════════
+  ★ 空壳函数（不要删除，防止原生侧注入插件调用时报错）★
+  ══════════════════════════════════════════════════════════════
+
+  setSearchEngine / setSearchEngines / setSearchHistory
+  setBrowseHistory / closeSearchPanel
+  ══════════════════════════════════════════════════════════════
+  -->
+  <style>
+    /* ========== CSS 变量 ========== */
+    :root {
+      --bg: #ffffff;
+      --icon-bg: #ffffff;
+      --text: #1c1c1e;
+      --text-sub: #8e8e93;
+      --add-border: #c7c7cc;
+      /* 菜单系统变量 */
+      --card-bg: rgba(255,255,255,0.85);
+      --border-color: rgba(0,0,0,0.08);
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+      --radius: 16px;
+      --menu-bg: rgba(255,255,255,0.92);
+      --menu-border: rgba(0,0,0,0.08);
+      --menu-divider: rgba(0,0,0,0.06);
+      --menu-icon-color: #555;
+      --btn-secondary-bg: rgba(0,0,0,0.04);
+      --btn-active-bg: rgba(0,0,0,0.08);
+      --slider-color: #0a58f6;
+    }
+
+    /* 系统深色模式 */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000000;
+        --icon-bg: #1c1c1e;
+        --text: #ffffff;
+        --text-sub: #636366;
+        --add-border: #48484a;
+        --card-bg: rgba(44,44,46,0.85);
+        --border-color: rgba(255,255,255,0.08);
+        --shadow: 0 2px 12px rgba(0,0,0,0.3);
+        --menu-bg: rgba(36,36,38,0.95);
+        --menu-border: rgba(255,255,255,0.1);
+        --menu-divider: rgba(255,255,255,0.06);
+        --menu-icon-color: #aaa;
+        --btn-secondary-bg: rgba(255,255,255,0.06);
+        --btn-active-bg: rgba(255,255,255,0.12);
+        --slider-color: #f97316;
+      }
+    }
+
+    /* Berry 夜间模式：优先级高于 prefers-color-scheme */
+    html.berry-dark {
+      --bg: #000000;
+      --icon-bg: #1c1c1e;
+      --text: #ffffff;
+      --text-sub: #636366;
+      --add-border: #48484a;
+      --card-bg: rgba(44,44,46,0.85);
+      --border-color: rgba(255,255,255,0.08);
+      --shadow: 0 2px 12px rgba(0,0,0,0.3);
+      --menu-bg: rgba(36,36,38,0.95);
+      --menu-border: rgba(255,255,255,0.1);
+      --menu-divider: rgba(255,255,255,0.06);
+      --menu-icon-color: #aaa;
+      --btn-secondary-bg: rgba(255,255,255,0.06);
+      --btn-active-bg: rgba(255,255,255,0.12);
+      --slider-color: #f97316;
+    }
+
+    /* ========== 全局重置 ========== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, "HarmonyOS Sans", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+      /* 底部预留原生搜索框（44px）+ BottomBar（42px）+ 安全区（约 40px）的空间 */
+      padding-bottom: 130px;
+    }
+
+    /* ========== 书签区域 ========== */
+    .bookmarks-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 78px 20px 0;
+    }
+    .bookmarks {
+      width: 100%;
+      max-width: 400px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px 8px;
+    }
+    .bookmark-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 4px;
+      border-radius: 12px;
+      cursor: pointer;
+      -webkit-touch-callout: none;
+      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .bookmark-item:active {
+      transform: scale(0.88);
+      transition: transform 0.1s ease-out;
+      background-color: rgba(0,0,0,0.06);
+    }
+    .bookmark-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 900;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+    .bookmark-icon img {
+      width: 75%;
+      height: 75%;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+    .bookmark-icon img.custom-icon {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .bookmark-name {
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 500;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 68px;
+      opacity: 0.75;
+    }
+    .bookmark-add .bookmark-icon {
+      background: var(--icon-bg) !important;
+      color: var(--text-sub);
+      font-size: 26px;
+      font-weight: 300;
+      border: 1.5px dashed var(--add-border);
+      box-shadow: none;
+    }
+    .bookmark-add .bookmark-name {
+      color: var(--text-sub);
+      opacity: 1;
+    }
+
+    /* ========== 汉堡菜单按钮 ========== */
+    .menu-btn {
+      position: fixed;
+      top: 45px;
+      left: 16px;
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      z-index: 2147483647;
+      transition: all 0.2s;
+      border: 1.5px solid rgba(255,255,255,0.4);
+      outline: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .menu-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.4); }
+    .menu-btn:hover { background: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.55); }
+    html.berry-dark .menu-btn { background: rgba(30,30,30,0.5); border-color: rgba(255,255,255,0.25); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    html.berry-dark .menu-btn:active { background: rgba(50,50,50,0.6); }
+    .menu-icon { width: 16px; height: 12px; display: flex; flex-direction: column; justify-content: space-between; }
+    .menu-icon span { display: block; width: 100%; height: 1.8px; border-radius: 2px; background-color: var(--menu-icon-color); }
+
+    /* ========== 菜单遮罩层 ========== */
+    .menu-overlay {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      z-index: 200;
+      display: none;
+      align-items: flex-start;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .menu-overlay.open { display: flex; }
+
+    /* ========== 菜单面板 ========== */
+    .menu-panel {
+      position: relative;
+      margin: 77px 16px 20px;
+      width: 300px;
+      max-width: calc(100vw - 32px);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 2px 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.2);
+      border: 1px solid var(--menu-border);
+      background: var(--menu-bg);
+    }
+    .menu-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      margin-top: 6px; margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--menu-divider);
+    }
+    .mode-label { font-size: 12px; color: var(--text-sub); margin-bottom: 8px; }
+
+    /* ========== 主页风格选项 ========== */
+    .home-style-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .home-style-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 12px;
+      border: 1.5px solid var(--border-color);
+      background: var(--btn-secondary-bg);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .home-style-item:active { background: var(--btn-active-bg); transform: scale(0.98); }
+    .home-style-item.active { border-color: var(--slider-color); background: rgba(10,88,246,0.08); }
+    html.berry-dark .home-style-item.active { background: rgba(249,115,22,0.12); }
+    .home-style-item.disabled { opacity: 0.5; cursor: default; pointer-events: none; }
+    .hs-icon { font-size: 20px; }
+    .hs-info { flex: 1; }
+    .hs-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .hs-desc { font-size: 11px; color: var(--text-sub); }
+    .hs-check { font-size: 16px; color: var(--slider-color); display: none; }
+    .home-style-item.active .hs-check { display: block; }
+
+    /* ========== 扩展注入容器 ========== */
+    #extMenuItems {}
+
+    /* ========== 关闭按钮 ========== */
+    .close-menu {
+      margin-top: 8px; text-align: center; font-size: 10px; color: var(--text-sub);
+      padding: 7px 0; line-height: 16px;
+      border-top: 1px solid var(--menu-divider);
+      cursor: pointer;
+    }
+    .close-menu:active { opacity: 0.7; }
+
+    /* ========== 面板内提示 ========== */
+    .menu-tip {
+      margin: 8px 0;
+      padding: 10px 12px;
+      background: rgba(10,88,246,0.08);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--slider-color);
+      opacity: 0;
+      transition: opacity 0.25s;
+      white-space: nowrap;
+      overflow-x: auto;
+    }
+    html.berry-dark .menu-tip { background: rgba(249,115,22,0.12); color: #f97316; }
+    .menu-tip.show { opacity: 1; }
+    .menu-tip .tip-icon { font-size: 16px; }
+    .menu-tip .tip-text { flex: 1; }
+  </style>
+</head>
+<body>
+<!-- 汉堡菜单按钮 -->
+<button class="menu-btn" id="switchZone" aria-label="打开菜单">
+  <span class="menu-icon"><span></span><span></span><span></span></span>
+</button>
+
+<!-- 菜单覆盖层 -->
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel" id="menuPanel">
+    <div class="menu-title">极简主页</div>
+
+    <!-- 主页风格选择 -->
+    <div class="mode-section">
+      <div class="mode-label">🏠 极简风格</div>
+      <div class="home-style-list" id="styleList">
+        <!-- 官方默认（内置） -->
+        <div class="home-style-item active" data-style="default" id="styleDefault">
+          <div class="hs-icon">📌</div>
+          <div class="hs-info"><div class="hs-name">官方默认</div><div class="hs-desc">官方默认，简约导航</div></div>
+          <div class="hs-check">✓</div>
+        </div>
+        <!-- 更多主页占位（无脚本安装时显示，有脚本时被移除或替换） -->
+        <div class="home-style-item disabled" id="stylePlaceholder">
+          <div class="hs-icon">✚</div>
+          <div class="hs-info"><div class="hs-name">更多主页选择</div><div class="hs-desc">需要安装脚本支持</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 扩展注入容器：外部脚本可在此处追加内容（切换方式、自定义URL等） -->
+    <div id="extMenuItems"></div>
+
+    <!-- 面板内提示区域 -->
+    <div class="menu-tip" id="menuTip">
+      <span class="tip-text"></span>
+    </div>
+
+    <div class="close-menu" id="closeMenuBtn">✕ 关闭</div>
+  </div>
+</div>
+
+<!-- 书签区域 -->
+<div class="bookmarks-wrapper">
+  <div class="bookmarks" id="bookmarks"></div>
+</div>
+
+<script>
+  /* ========== 提前加载保存的主页风格，消除闪烁 ========== */
+  (function() {
+    try {
+      var style = BerryBrowser.homeStorageGet('berry_home_style') || 'default';
+      var customUrl = BerryBrowser.homeStorageGet('berry_home_custom_url') || '';
+      var userscriptInstalled = BerryBrowser.homeStorageGet('berry_userscript_installed') || '';
+      if (style === 'custom' && customUrl && userscriptInstalled && navigator.onLine) {
+        document.documentElement.style.visibility = 'hidden';
+        location.href = 'berry://navigate?url=' + encodeURIComponent(customUrl);
+        return;
+      }
+      var iframeUrl = BerryBrowser.homeStorageGet('berry_home_iframe_url_' + style) || '';
+      if (iframeUrl && navigator.onLine) {
+        var f = document.createElement('iframe');
+        f.id = 'berryHomeIframe';
+        f.setAttribute('allowfullscreen', '');
+        f.setAttribute('allow', 'clipboard-read; clipboard-write');
+        f.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:100;background:#fff';
+        f.src = iframeUrl;
+        document.documentElement.appendChild(f);
+        // 把菜单按钮和菜单遮罩提升到 <html> 层，使其渲染在 iframe 之上
+        // （iframe 会覆盖 body 内所有元素，无论 z-index 多高）
+        var menuBtn = document.getElementById('switchZone');
+        if (menuBtn) document.documentElement.appendChild(menuBtn);
+        var menuOverlay = document.getElementById('menuOverlay');
+        if (menuOverlay) document.documentElement.appendChild(menuOverlay);
+      }
+    } catch(e) {}
+  })();
+
+  var bookmarks = [];
+  var _pressTimer = null;
+  var _longPressed = false;
+  var currentStyle = 'default';
+  var _styleChangeCbs = [];
+
+  function $(id) { return document.getElementById(id); }
+
+  function hsGet(key) {
+    try { if (typeof BerryBrowser !== 'undefined' && BerryBrowser.homeStorageGet) { var v = BerryBrowser.homeStorageGet(key); if (v !== null && v !== undefined && v !== '') return v; } } catch(e) {}
+    return null;
+  }
+
+  function hsSet(key, val) {
+    try { if (typeof BerryBrowser !== 'undefined' && BerryBrowser.homeStorageSet) { BerryBrowser.homeStorageSet(key, val); } } catch(e) {}
+  }
+
+  /* 面板内提示 */
+  var _tipTimer = null;
+  function showTip(msg) {
+    var el = $('menuTip');
+    if (!el) return;
+    var textEl = el.querySelector('.tip-text');
+    if (!textEl) return;
+    textEl.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_tipTimer);
+    _tipTimer = setTimeout(function() { el.classList.remove('show'); }, 2500);
+  }
+
+  /* 主页风格配置 */
+  var HOME_STYLES = { 'default': { label: '官方默认' } };
+
+  function loadHomeStyle() {
+    var saved = hsGet('berry_home_style') || 'default';
+    currentStyle = saved || 'default';
+  }
+
+  function applyStyleUI(style) {
+    var items = document.querySelectorAll('.home-style-item:not(.disabled)');
+    for (var i = 0; i < items.length; i++) {
+      items[i].classList.toggle('active', items[i].getAttribute('data-style') === style);
+    }
+  }
+
+  function selectStyle(style) {
+    currentStyle = style;
+    hsSet('berry_home_style', style);
+    applyStyleUI(style);
+    for (var i = 0; i < _styleChangeCbs.length; i++) { try { _styleChangeCbs[i](style); } catch(e) {} }
+  }
+
+  /* 菜单扩展 API */
+  window.BerryHomeMenu = {
+    addItem: function(cfg) {
+      var list = $('styleList');
+      if (!list) return null;
+      var placeholder = $('stylePlaceholder');
+      var item = document.createElement('div');
+      item.className = 'home-style-item';
+      item.setAttribute('data-style', cfg.key);
+
+      var icon = document.createElement('div'); icon.className = 'hs-icon'; icon.textContent = cfg.icon || '\uD83D\uDD17';
+      var info = document.createElement('div'); info.className = 'hs-info';
+      var name = document.createElement('div'); name.className = 'hs-name'; name.textContent = cfg.name;
+      var desc = document.createElement('div'); desc.className = 'hs-desc'; desc.textContent = cfg.desc || '';
+      var check = document.createElement('div'); check.className = 'hs-check'; check.textContent = '\u2713';
+
+      info.appendChild(name); info.appendChild(desc);
+      item.appendChild(icon); item.appendChild(info); item.appendChild(check);
+
+      item.addEventListener('click', function() {
+        var all = list.querySelectorAll('.home-style-item');
+        for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+        item.classList.add('active');
+        selectStyle(cfg.key);
+        if (cfg.onClick) cfg.onClick(cfg.key);
+      });
+
+      HOME_STYLES[cfg.key] = { label: cfg.name };
+      if (placeholder && placeholder.parentNode === list) {
+        list.insertBefore(item, placeholder);
+      } else {
+        list.appendChild(item);
+      }
+      return item;
+    },
+
+    removeItem: function(key) {
+      var items = document.querySelectorAll('.home-style-item[data-style="' + key + '"]');
+      for (var i = 0; i < items.length; i++) items[i].remove();
+      delete HOME_STYLES[key];
+    },
+
+    addSection: function(html) {
+      var container = $('extMenuItems');
+      if (!container) return null;
+      var div = document.createElement('div');
+      div.innerHTML = html;
+      container.appendChild(div);
+      return div;
+    },
+
+    removePlaceholder: function() {
+      var el = $('stylePlaceholder');
+      if (el) el.remove();
+    },
+
+    open: function() { openMenu(); },
+    close: function() { closeMenu(); },
+    toggle: function() {
+      var overlay = $('menuOverlay');
+      if (overlay) overlay.classList.toggle('open');
+    },
+
+    onStyleChange: function(fn) {
+      if (typeof fn === 'function') _styleChangeCbs.push(fn);
+    },
+
+    getCurrentStyle: function() { return currentStyle; },
+    selectStyle: selectStyle,
+    hsGet: hsGet,
+    hsSet: hsSet,
+    showTip: showTip,
+
+    getOverlay: function() { return $('menuOverlay'); },
+    getPanel: function() { return $('menuPanel'); },
+    getStyleList: function() { return $('styleList'); },
+    getSwitchZone: function() { return $('switchZone'); }
+  };
+
+  /* 菜单控制 */
+  function openMenu() {
+    var overlay = $('menuOverlay');
+    if (overlay) overlay.classList.add('open');
+    applyStyleUI(currentStyle);
+  }
+
+  function closeMenu() {
+    var overlay = $('menuOverlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  /* 书签渲染 */
+  function renderBookmarks() {
+    var container = document.getElementById('bookmarks');
+    container.innerHTML = '';
+    for (var i = 0; i < bookmarks.length; i++) container.appendChild(createBookmarkItem(bookmarks[i], i));
+    container.appendChild(createAddButton());
+  }
+
+  function createBookmarkItem(b, idx) {
+    var item = document.createElement('div');
+    item.className = 'bookmark-item';
+
+    var icon = document.createElement('div');
+    icon.className = 'bookmark-icon';
+    icon.style.background = 'var(--icon-bg)';
+    if (b.customIcon) {
+      var imgCustom = document.createElement('img'); imgCustom.src = b.customIcon; imgCustom.className = 'custom-icon';
+      imgCustom.onerror = function() { icon.removeChild(imgCustom); icon.style.color = 'var(--text-sub)'; icon.textContent = b.name.charAt(0); };
+      icon.appendChild(imgCustom);
+    } else if (b.favicon) {
+      var imgFav = document.createElement('img'); imgFav.src = b.favicon;
+      imgFav.onerror = function() { icon.removeChild(imgFav); icon.style.color = 'var(--text-sub)'; icon.textContent = b.name.charAt(0); };
+      icon.appendChild(imgFav);
+    } else {
+      icon.style.color = 'var(--text-sub)'; icon.textContent = b.name.charAt(0);
+    }
+
+    var name = document.createElement('span'); name.className = 'bookmark-name'; name.textContent = b.name;
+    item.appendChild(icon); item.appendChild(name);
+
+    item.addEventListener('touchstart', function() {
+      _longPressed = false;
+      _pressTimer = setTimeout(function() { _longPressed = true; location.href = 'berry://edit-bookmark?index=' + idx; }, 500);
+    }, { passive: true });
+    item.addEventListener('touchend',   function() { clearTimeout(_pressTimer); });
+    item.addEventListener('touchmove',  function() { clearTimeout(_pressTimer); });
+    item.addEventListener('touchcancel',function() { clearTimeout(_pressTimer); });
+
+    item.addEventListener('click', function(e) {
+      if (_longPressed) { e.preventDefault(); return; }
+      location.href = 'berry://navigate?url=' + encodeURIComponent(b.url);
+    });
+    return item;
+  }
+
+  function createAddButton() {
+    var item = document.createElement('div');
+    item.className = 'bookmark-item bookmark-add';
+    var icon = document.createElement('div'); icon.className = 'bookmark-icon'; icon.textContent = '+';
+    var name = document.createElement('span'); name.className = 'bookmark-name'; name.textContent = '\u6DFB\u52A0';
+    item.appendChild(icon); item.appendChild(name);
+    item.addEventListener('click', function() { location.href = 'berry://add-bookmark'; });
+    return item;
+  }
+
+  /* ArkTS 注入接口 */
+  function setBookmarks(jsonStr) {
+    try { bookmarks = JSON.parse(jsonStr); renderBookmarks(); } catch(e) {}
+  }
+
+  /* 空壳函数 */
+  function setSearchEngine() {}
+  function setSearchEngines() {}
+  function setSearchHistory() {}
+  function setBrowseHistory() {}
+  function closeSearchPanel() {}
+
+  /* 事件绑定 */
+  document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var switchZone = $('switchZone');
+    var overlay = $('menuOverlay');
+    var panel = $('menuPanel');
+
+    if (switchZone) {
+      switchZone.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (overlay) overlay.classList.toggle('open');
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (!overlay || !overlay.classList.contains('open')) return;
+      if (panel && panel.contains(e.target)) return;
+      if (switchZone && switchZone.contains(e.target)) return;
+      overlay.classList.remove('open');
+    });
+
+    var closeBtn = $('closeMenuBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+
+    loadHomeStyle();
+    applyStyleUI(currentStyle);
+  });
+
+  renderBookmarks();
+</script>
+
+<!-- 远程加载菜单扩展脚本（userscript 已加载则跳过，避免重复执行） -->
+<script>
+  (function() {
+    // 若 userscript 已注入桥接对象，说明 remote.js 会由 userscript 负责加载，此处跳过
+    if (window.__berryMenu || window.__berryMenuRemoteLoaded) return;
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/gh/jagshen/berry-menu-btn@master/berry-menu-remote.js";
+    s.onerror = function() {
+      console.log("[BerryHome] 扩展脚本加载失败，使用默认菜单");
+    };
+    document.body.appendChild(s);
+  })();
+</script>
+</body>
+</html>
