@@ -166,21 +166,20 @@
 
     if (method === 'longpress') {
       var timer = null, triggered = false;
-      _doc.addEventListener('touchstart', function(e) {
+      function onTS(e) {
         var t = e.touches[0];
         if (!t || !inHotZone(t.clientX, t.clientY)) return;
         clearTimeout(timer); triggered = false;
         timer = setTimeout(function() { triggered = true; show(); }, 500);
-      }, { passive: true });
-      _doc.addEventListener('touchend', function(e) {
-        clearTimeout(timer);
-      }, { passive: true });
-      _doc.addEventListener('touchmove', function(e) {
-        clearTimeout(timer);
-      }, { passive: true });
+      }
+      function onTE() { clearTimeout(timer); }
+      function onTM() { clearTimeout(timer); }
+      _doc.addEventListener('touchstart', onTS, { passive: true });
+      _doc.addEventListener('touchend', onTE, { passive: true });
+      _doc.addEventListener('touchmove', onTM, { passive: true });
     } else if (method === 'dblclick') {
       var dblTimer = null;
-      _doc.addEventListener('touchend', function(e) {
+      function onTE2(e) {
         var t = e.changedTouches && e.changedTouches[0];
         if (!t || !inHotZone(t.clientX, t.clientY)) return;
         if (dblTimer) {
@@ -189,7 +188,8 @@
         } else {
           dblTimer = setTimeout(function() { dblTimer = null; }, 250);
         }
-      }, { passive: true });
+      }
+      _doc.addEventListener('touchend', onTE2, { passive: true });
     } else {
       // 常驻模式：热区完全穿透，不需要手势检测
     }
@@ -203,6 +203,14 @@
         if (btn) btn.style.display = '';
       }
       hot.remove();
+      // 移除 document 级别监听器
+      if (method === 'longpress') {
+        if (typeof onTS === 'function') _doc.removeEventListener('touchstart', onTS);
+        if (typeof onTE === 'function') _doc.removeEventListener('touchend', onTE);
+        if (typeof onTM === 'function') _doc.removeEventListener('touchmove', onTM);
+      } else if (method === 'dblclick') {
+        if (typeof onTE2 === 'function') _doc.removeEventListener('touchend', onTE2);
+      }
     }
     _doc.documentElement.appendChild(hot);
     
