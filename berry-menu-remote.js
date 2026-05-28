@@ -157,41 +157,43 @@
     var btnTopNum = (isShadow && !isHomePage()) ? 15 : 45;
     var btnLeft = 16;
     var btnSize = 28;
-    hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:none;';
-
-    /* 判断触点是否在热区内 */
-    function inHotZone(x, y) {
-      return x >= 0 && x <= 120 && y >= btnTopNum && y <= btnTopNum + 120;
-    }
+    hot.style.cssText = 'position:fixed;top:' + btnTopNum + 'px;left:0;width:120px;height:120px;z-index:999999;cursor:default;pointer-events:auto;';
 
     if (method === 'longpress') {
       var timer = null, triggered = false;
-      function onTS(e) {
-        var t = e.touches[0];
-        if (!t || !inHotZone(t.clientX, t.clientY)) return;
-        clearTimeout(timer); triggered = false;
+      hot.addEventListener('touchstart', function(e) {
+        triggered = false;
         timer = setTimeout(function() { triggered = true; show(); }, 500);
-      }
-      function onTE() { clearTimeout(timer); }
-      function onTM() { clearTimeout(timer); }
-      _doc.addEventListener('touchstart', onTS, { passive: true });
-      _doc.addEventListener('touchend', onTE, { passive: true });
-      _doc.addEventListener('touchmove', onTM, { passive: true });
+      }, { passive: true });
+      hot.addEventListener('touchend', function() {
+        clearTimeout(timer);
+        if (!triggered) {
+          // 短触：临时穿透让底层响应
+          hot.style.pointerEvents = 'none';
+          setTimeout(function() { hot.style.pointerEvents = 'auto'; }, 300);
+        }
+      }, { passive: true });
+      hot.addEventListener('touchmove', function() {
+        clearTimeout(timer);
+      }, { passive: true });
     } else if (method === 'dblclick') {
       var dblTimer = null;
-      function onTE2(e) {
-        var t = e.changedTouches && e.changedTouches[0];
-        if (!t || !inHotZone(t.clientX, t.clientY)) return;
+      hot.addEventListener('touchstart', function(e) {
         if (dblTimer) {
           clearTimeout(dblTimer); dblTimer = null;
           show();
         } else {
-          dblTimer = setTimeout(function() { dblTimer = null; }, 250);
+          dblTimer = setTimeout(function() {
+            dblTimer = null;
+            // 单击超时：临时穿透让底层响应
+            hot.style.pointerEvents = 'none';
+            setTimeout(function() { hot.style.pointerEvents = 'auto'; }, 300);
+          }, 400);
         }
-      }
-      _doc.addEventListener('touchend', onTE2, { passive: true });
+      }, { passive: true });
     } else {
       // 常驻模式：热区完全穿透，不需要手势检测
+      hot.style.pointerEvents = 'none';
     }
     function show() {
       var btn;
@@ -203,14 +205,6 @@
         if (btn) btn.style.display = '';
       }
       hot.remove();
-      // 移除 document 级别监听器
-      if (method === 'longpress') {
-        if (typeof onTS === 'function') _doc.removeEventListener('touchstart', onTS);
-        if (typeof onTE === 'function') _doc.removeEventListener('touchend', onTE);
-        if (typeof onTM === 'function') _doc.removeEventListener('touchmove', onTM);
-      } else if (method === 'dblclick') {
-        if (typeof onTE2 === 'function') _doc.removeEventListener('touchend', onTE2);
-      }
     }
     _doc.documentElement.appendChild(hot);
     
